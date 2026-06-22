@@ -1,0 +1,37 @@
+---
+description: Workflow Cursor + Claude Code, session habits
+alwaysApply: true
+---
+
+# AI Workflow
+
+## Division of labor
+
+- **Claude Code** — implementation; chooses architecture and code style
+- **Cursor** — game context, intent prompts, review when user asks
+
+Prompts from Cursor = **what we want and how it should behave**, not how to code it.
+
+## Prompt shape (for Claude Code)
+
+```
+Фаза: …
+Уже есть в Studio: …
+Игрок должен: …
+Система должна: …
+Пока не делаем: …
+Проверка: Play Solo → …
+```
+
+Optional: ссылка на `docs/ROADMAP.md` / `docs/ARCHITECTURE.md`.
+
+## Session habits (Claude Code)
+
+- `/context` 60–65% → `/compact`
+- `/btw` — побочные вопросы
+- Застряли → `/clear` + новый промпт с **ожидаемым поведением для игрока**
+
+## Language
+
+- Rules/docs: EN ok (cheaper input)
+- Chat with user: RU

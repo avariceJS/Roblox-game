@@ -1,0 +1,31 @@
+{
+  "numStartups": 1,
+  "firstStartTime": "2026-06-21T13:06:59.972Z",
+  "opusProMigrationComplete": true,
+  "sonnet1m45MigrationComplete": true,
+  "seenNotifications": {},
+  "migrationVersion": 13,
+  "shiftEnterKeyBindingInstalled": true,
+  "projects": {
+    "/Users/sl-aleksandr/Desktop/project": {
+      "allowedTools": [],
+      "mcpContextUris": [],
+      "mcpServers": {},
+      "enabledMcpjsonServers": [],
+      "disabledMcpjsonServers": [],
+      "hasTrustDialogAccepted": true,
+      "projectOnboardingSeenCount": 0,
+      "hasClaudeMdExternalIncludesApproved": false,
+      "hasClaudeMdExternalIncludesWarningShown": false,
+      "hasCompletedProjectOnboarding": true,
+      "lastGracefulShutdown": false
+    }
+  },
+  "hasCompletedOnboarding": true,
+  "lastOnboardingVersion": "2.1.126",
+  "lastReleaseNotesSeen": "2.1.126",
+  "opus47LaunchSeenCount": 1,
+  "userID": "6a15fcdd5d27f940a6595db2980fc51467058c770f021b2e236dcf52a9302b7f",
+  "officialMarketplaceAutoInstallAttempted": true,
+  "officialMarketplaceAutoInstalled": true
+}

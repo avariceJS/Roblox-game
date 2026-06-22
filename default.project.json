@@ -1,0 +1,30 @@
+{
+  "name": "Rent-a-Monster",
+  "globIgnorePaths": [
+    "**/.gitkeep",
+    "**/*.md"
+  ],
+  "tree": {
+    "$className": "DataModel",
+
+    "ReplicatedStorage": {
+      "src": {
+        "$path": "src"
+      }
+    },
+
+    "ServerScriptService": {
+      "Init": {
+        "$path": "bootstrap/ServerInit.server.lua"
+      }
+    },
+
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "Init": {
+          "$path": "bootstrap/ClientInit.client.lua"
+        }
+      }
+    }
+  }
+}

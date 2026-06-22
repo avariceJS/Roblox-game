@@ -1,0 +1,23 @@
+# Roblox / Rojo
+*.rbxl
+*.rbxlx
+*.rbxm
+*.rbxmx
+/build/
+/out/
+
+# Secrets
+.env
+.env.*
+secrets/
+*.pem
+
+# OS / IDE
+.DS_Store
+*.swp
+.vscode/
+!.vscode/extensions.json
+
+# Claude local secrets (if used)
+.claude/secrets.env
+.claude/logs/
