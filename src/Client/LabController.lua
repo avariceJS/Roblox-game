@@ -267,38 +267,6 @@ local function hasFatiguedMonster(monsters: { any }?): boolean
 	return false
 end
 
-local function refreshFatigueLabels()
-	local monster = MonsterDisplay.first(lastMonsters)
-	if monster then
-		MonsterDisplay.fill(monsterLabels, monster)
-	end
-	renderDispatch()
-end
-
-local function startFatigueTickIfNeeded()
-	stopFatigueTick()
-	if not overlay.Visible or not hasFatiguedMonster(lastMonsters) then
-		return
-	end
-
-	local elapsed = 0
-	fatigueTickConn = RunService.Heartbeat:Connect(function(dt)
-		if not overlay.Visible then
-			stopFatigueTick()
-			return
-		end
-		elapsed += dt
-		if elapsed < 1 then
-			return
-		end
-		elapsed = 0
-		refreshFatigueLabels()
-		if not hasFatiguedMonster(lastMonsters) then
-			stopFatigueTick()
-		end
-	end)
-end
-
 local function fatigueButtonSuffix(monster: any): string
 	local left = MonsterDisplay.fatigueSecondsLeft(monster)
 	if left == nil then
@@ -342,6 +310,38 @@ local function renderDispatch()
 		dispatchBtn.TextColor3       = Color3.fromRGB(140, 140, 255)
 		dispatchBtn.Text             = "Отдыхает 💤" .. fatigueButtonSuffix(selected)
 	end
+end
+
+local function refreshFatigueLabels()
+	local monster = MonsterDisplay.first(lastMonsters)
+	if monster then
+		MonsterDisplay.fill(monsterLabels, monster)
+	end
+	renderDispatch()
+end
+
+local function startFatigueTickIfNeeded()
+	stopFatigueTick()
+	if not overlay.Visible or not hasFatiguedMonster(lastMonsters) then
+		return
+	end
+
+	local elapsed = 0
+	fatigueTickConn = RunService.Heartbeat:Connect(function(dt)
+		if not overlay.Visible then
+			stopFatigueTick()
+			return
+		end
+		elapsed += dt
+		if elapsed < 1 then
+			return
+		end
+		elapsed = 0
+		refreshFatigueLabels()
+		if not hasFatiguedMonster(lastMonsters) then
+			stopFatigueTick()
+		end
+	end)
 end
 
 local function render(monsters: { any }?)
@@ -424,7 +424,7 @@ for i, btn in baseButtons do
 		local tgtId = i
 		setOpen(false)
 
-		local result = fnDispatch:InvokeServer({ targetBaseId = tgtId })
+		local result = fnDispatch:InvokeServer({ targetBaseId = tgtId, monsterId = selectedMonsterId })
 		if result and result.ok then
 			showToast("Гуппи отправился! 🐸")
 		else

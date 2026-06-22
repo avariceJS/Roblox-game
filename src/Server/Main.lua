@@ -11,13 +11,9 @@ local BaseService = require(Server.BaseService)
 local MonsterService  = require(Server.MonsterService)
 local LabService      = require(Server.LabService)
 local MissionService  = require(Server.MissionService)
-local Config = require(Shared.Config)
 local BaseUtil = require(Shared.BaseUtil)
 
 BaseMapService.ensure()
-BaseService.configureSpawns()
-
-local LEGACY_REMOTES = { "OpenLab", "LabOpened" }
 
 local function ensureRemote(name: string, class: string): Instance
 	local existing = Remotes:FindFirstChild(name)
@@ -33,27 +29,20 @@ local function ensureRemote(name: string, class: string): Instance
 	return existing
 end
 
-for _, legacyName in LEGACY_REMOTES do
-	local legacy = Remotes:FindFirstChild(legacyName)
-	if legacy then
-		legacy:Destroy()
-	end
-end
-
 local fnGetData = ensureRemote("GetPlayerData", "RemoteFunction") :: RemoteFunction
 local evMonsterUpdated = ensureRemote("MonsterUpdated", "RemoteEvent") :: RemoteEvent
 local evBaseAssigned = ensureRemote("BaseAssigned", "RemoteEvent") :: RemoteEvent
 local fnDispatch     = ensureRemote("DispatchMonster", "RemoteFunction") :: RemoteFunction
 
-LabService.init(Config)
+LabService.init()
 MissionService.init(PlayerDataService, evMonsterUpdated)
 
-fnDispatch.OnServerInvoke = function(player: Player, payload: { targetBaseId: number? })
+fnDispatch.OnServerInvoke = function(player: Player, payload: { targetBaseId: number?, monsterId: string? })
 	local tgtId = BaseUtil.normalizeId(payload and payload.targetBaseId)
 	if not tgtId then
 		return { ok = false, message = "Неверная цель" }
 	end
-	return MissionService.dispatch(player, tgtId)
+	return MissionService.dispatch(player, tgtId, payload and payload.monsterId)
 end
 
 local function waitForPlayerData(player: Player)

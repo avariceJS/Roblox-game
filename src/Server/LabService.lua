@@ -1,4 +1,5 @@
 local BaseUtil = require(game.ReplicatedStorage.src.Shared.BaseUtil)
+local Config   = require(game.ReplicatedStorage.src.Shared.Config)
 
 local LabService = {}
 
@@ -60,14 +61,14 @@ local function buildCapsule(floorPos: Vector3, baseId: number): Model
 	prompt.ActionText = "Открыть"
 	prompt.ObjectText = "Лаборатория"
 	prompt.KeyboardKeyCode = Enum.KeyCode.E
-	prompt.MaxActivationDistance = 14
+	prompt.MaxActivationDistance = Config.LAB_PROMPT_DISTANCE
 	prompt.RequiresLineOfSight = false
 	prompt.Parent = orb
 
 	return model
 end
 
-function LabService.init(config: { BASE_COUNT: number })
+function LabService.init()
 	local existing = workspace:FindFirstChild("Labs")
 	if existing then
 		existing:Destroy()
@@ -77,7 +78,7 @@ function LabService.init(config: { BASE_COUNT: number })
 	folder.Name = "Labs"
 	folder.Parent = workspace
 
-	for baseId = 1, config.BASE_COUNT do
+	for baseId = 1, Config.BASE_COUNT do
 		local floorPos = BaseUtil.getLabFloorPos(baseId)
 		if not floorPos then
 			warn("[LabService] Missing base", baseId)

@@ -4,6 +4,7 @@ local BaseUtil = require(game.ReplicatedStorage.src.Shared.BaseUtil)
 
 local _pds = nil
 local _ev  = nil
+local _missionsFolder: Folder
 
 local slowed: { [Humanoid]: number } = {}
 
@@ -83,7 +84,7 @@ local function createWalker(from: Vector3): Part
 	p.CanCollide  = false
 	p.Material    = Enum.Material.Neon
 	p.Color       = Color3.fromRGB(80, 220, 80)
-	p.Parent      = workspace
+	p.Parent      = _missionsFolder
 	return p
 end
 
@@ -98,7 +99,7 @@ local function createPuddle(pos: Vector3): (Part, RBXScriptConnection)
 	p.Material     = Enum.Material.Neon
 	p.Color        = Color3.fromRGB(80, 200, 80)
 	p.Transparency = 0.4
-	p.Parent       = workspace
+	p.Parent       = _missionsFolder
 
 	local conn = p.Touched:Connect(function(hit)
 		local hum = hit.Parent:FindFirstChildWhichIsA("Humanoid")
@@ -178,9 +179,16 @@ end
 function MissionService.init(playerDataService, evMonsterUpdated)
 	_pds = playerDataService
 	_ev  = evMonsterUpdated
+	local existing = workspace:FindFirstChild("Missions")
+	if existing then
+		existing:Destroy()
+	end
+	_missionsFolder = Instance.new("Folder")
+	_missionsFolder.Name = "Missions"
+	_missionsFolder.Parent = workspace
 end
 
-function MissionService.dispatch(player: Player, targetBaseId: number): { ok: boolean, message: string? }
+function MissionService.dispatch(player: Player, targetBaseId: number, requestedId: string?): { ok: boolean, message: string? }
 	local data = _pds.get(player)
 	if not data then
 		return { ok = false, message = "Данные не загружены" }
@@ -199,16 +207,35 @@ function MissionService.dispatch(player: Player, targetBaseId: number): { ok: bo
 		return { ok = false, message = "База #" .. tgtId .. " не найдена" }
 	end
 
-	local monster = getIdleMonster(data)
-	if not monster then
-		local first = data.monsters[1]
-		if first then
-			local stateMsg = if first.state == "Fatigued"
+	local monster: any?
+	if requestedId then
+		for _, m in data.monsters do
+			if m.id == requestedId then
+				monster = m
+				break
+			end
+		end
+		if not monster then
+			return { ok = false, message = "Монстр не найден" }
+		end
+		if monster.state ~= "Idle" then
+			local stateMsg = if monster.state == "Fatigued"
 				then "Гуппи отдыхает, подожди 💤"
 				else "Гуппи уже на задании 🐸"
 			return { ok = false, message = stateMsg }
 		end
-		return { ok = false, message = "Нет монстров" }
+	else
+		monster = getIdleMonster(data)
+		if not monster then
+			local first = data.monsters[1]
+			if first then
+				local stateMsg = if first.state == "Fatigued"
+					then "Гуппи отдыхает, подожди 💤"
+					else "Гуппи уже на задании 🐸"
+				return { ok = false, message = stateMsg }
+			end
+			return { ok = false, message = "Нет монстров" }
+		end
 	end
 
 	local monsterId = monster.id

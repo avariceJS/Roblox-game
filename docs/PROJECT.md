@@ -53,11 +53,11 @@ Studio + Rojo: `STUDIO.md`
 
 ## Как работаем с AI
 
-| Кто | Роль |
-|-----|------|
-| **Cursor** | контекст, intent-промпты, ревью, правки |
+| Кто             | Роль                                          |
+| --------------- | --------------------------------------------- |
+| **Cursor**      | контекст, intent-промпты, ревью, правки       |
 | **Claude Code** | имплементация — **сам решает как писать код** |
-| **Ты** | тест в Studio, feedback |
+| **Ты**          | тест в Studio, feedback                       |
 
 Промпты = **что хотим и как должно работать для игрока**, не рецепты кода.  
 Один этап ROADMAP за промпт/сессию.
@@ -66,29 +66,31 @@ Studio + Rojo: `STUDIO.md`
 
 ## Ключевые технические решения
 
-| Решение | Почему |
-|---------|--------|
-| `ReplicatedStorage.src` | реплицируется на клиент; корень `game.src` — нет HUD в Play |
-| ModuleScripts + Init | весь код в `src`, Roblox требует стартеры в SSS / SPS |
-| Server authority | монеты, базы, миссии, способности — только сервер |
-| DataStore key `PlayerData_v1` | coins, chaos, baseId, monsters, traps |
-| Лаборатория per BaseId | центр UI монстров, не глобальная зона на карте |
-| **Без комментариев в `.lua`** | объяснения в чате, не в коде |
+| Решение                       | Почему                                                      |
+| ----------------------------- | ----------------------------------------------------------- |
+| `ReplicatedStorage.src`       | реплицируется на клиент; корень `game.src` — нет HUD в Play |
+| ModuleScripts + Init          | весь код в `src`, Roblox требует стартеры в SSS / SPS       |
+| Server authority              | монеты, базы, миссии, способности — только сервер           |
+| DataStore key `PlayerData_v1` | coins, chaos, baseId, monsters, traps                       |
+| Лаборатория per BaseId        | центр UI монстров, не глобальная зона на карте              |
+| **Без комментариев в `.lua`** | объяснения в чате, не в коде                                |
 
 ## Файлы кода
 
-| Файл | Назначение |
-|------|------------|
-| `src/Server/Main.lua` | join/leave, remotes, оркестрация |
-| `src/Server/BaseMapService.lua` | создание 6 баз при старте |
-| `src/Server/BaseService.lua` | assign base, spawn |
-| `src/Server/PlayerDataService.lua` | DataStore |
-| `src/Server/MonsterService.lua` | стартовый Slime |
-| `src/Server/LabService.lua` | капсулы лаборатории на базах |
-| `src/Shared/BaseUtil.lua` | поиск баз, normalizeId |
-| `src/Shared/MonsterDisplay.lua` | общий UI монстра |
-| `src/Client/HudController.lua` | монеты + номер базы |
-| `src/Client/BaseMarkerController.lua` | подсветка своей базы |
-| `src/Client/LabController.lua` | UI лаборатории |
-| `src/Client/MonsterCardController.lua` | карточка монстра внизу |
-| Remotes | GetPlayerData, BaseAssigned, MonsterUpdated |
+| Файл                                  | Назначение                                                   |
+| ------------------------------------- | ------------------------------------------------------------ |
+| `src/Server/Main.lua`                 | join/leave, remotes, оркестрация                             |
+| `src/Server/BaseMapService.lua`       | создание 6 баз при старте                                    |
+| `src/Server/BaseService.lua`          | assign base, spawn                                           |
+| `src/Server/PlayerDataService.lua`    | DataStore                                                    |
+| `src/Server/MonsterService.lua`       | стартовый Slime                                              |
+| `src/Server/LabService.lua`           | капсулы лаборатории на базах                                 |
+| `src/Server/MissionService.lua`       | dispatch, runMission, fatigue                                |
+| `src/Shared/Config.lua`               | все константы игры                                           |
+| `src/Shared/BaseUtil.lua`             | поиск баз, normalizeId                                       |
+| `src/Shared/MonsterDefs.lua`          | данные типов монстров                                        |
+| `src/Shared/MonsterDisplay.lua`       | общий UI монстра                                             |
+| `src/Client/HudController.lua`        | монеты + chaos + номер базы                                  |
+| `src/Client/BaseMarkerController.lua` | подсветка своей базы                                         |
+| `src/Client/LabController.lua`        | UI лаборатории + dispatch                                    |
+| Remotes (4)                           | GetPlayerData, BaseAssigned, MonsterUpdated, DispatchMonster |

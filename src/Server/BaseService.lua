@@ -5,17 +5,6 @@ local occupied: { [number]: Player } = {}
 
 local BaseService = {}
 
-function BaseService.configureSpawns()
-	for i = 1, Config.BASE_COUNT do
-		local spawn = BaseUtil.getSpawn(i)
-		if spawn then
-			spawn.Neutral = false
-		else
-			warn("[BaseService] Missing spawn for Base" .. i)
-		end
-	end
-end
-
 function BaseService.assign(player: Player, preferred: number?): number?
 	local pref = BaseUtil.normalizeId(preferred)
 	if pref then

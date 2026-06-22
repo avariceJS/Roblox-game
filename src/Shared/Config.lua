@@ -10,10 +10,11 @@ return {
 	DISPATCH_COINS  = 25,
 	DISPATCH_CHAOS  = 10,
 	FATIGUE_TIME    = 10,
-	PUDDLE_RADIUS   = 6,
-	PUDDLE_DURATION = 10,
-	SLOW_SPEED      = 8,
-	SLOW_DURATION   = 4,
+	PUDDLE_RADIUS        = 6,
+	PUDDLE_DURATION      = 10,
+	SLOW_SPEED           = 8,
+	SLOW_DURATION        = 4,
+	LAB_PROMPT_DISTANCE  = 14,
 
 	BASE_LAYOUT = {
 		{ id = 1, position = Vector3.new(-45, 0.5, 35), color = Color3.fromRGB(220, 55, 55) },
