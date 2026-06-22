@@ -18,6 +18,62 @@ local function getIdleMonster(data): any?
 	return nil
 end
 
+local function setMonsterIdle(monster: any)
+	monster.state = "Idle"
+	monster.fatigueUntil = 0
+end
+
+local function scheduleFatigueRecovery(player: Player, monsterId: string, delaySec: number)
+	task.delay(delaySec, function()
+		local d = _pds.get(player)
+		if not d then
+			return
+		end
+		for _, m in d.monsters do
+			if m.id == monsterId and m.state == "Fatigued" then
+				setMonsterIdle(m)
+				_pds.save(player)
+				if player.Parent then
+					_ev:FireClient(player, {
+						monsters = d.monsters,
+						toast = "Гуппи отдохнул — готов к делу! 🐸",
+					})
+				end
+				break
+			end
+		end
+	end)
+end
+
+function MissionService.syncPlayerMonsters(player: Player)
+	local data = _pds.get(player)
+	if not data then
+		return
+	end
+
+	local now = os.time()
+	local changed = false
+
+	for _, m in data.monsters do
+		if m.state == "OnMission" then
+			setMonsterIdle(m)
+			changed = true
+		elseif m.state == "Fatigued" then
+			local untilTs = m.fatigueUntil or 0
+			if untilTs <= now then
+				setMonsterIdle(m)
+				changed = true
+			else
+				scheduleFatigueRecovery(player, m.id, untilTs - now)
+			end
+		end
+	end
+
+	if changed then
+		_pds.save(player)
+	end
+end
+
 local function createWalker(from: Vector3): Part
 	local p = Instance.new("Part")
 	p.Shape       = Enum.PartType.Ball
@@ -111,28 +167,12 @@ local function runMission(player: Player, monsterId: string, targetId: number)
 		_ev:FireClient(player, {
 			monsters = d.monsters,
 			coins    = d.coins,
+			chaos    = d.chaos,
 			toast    = "Гуппи пакостит! +💰" .. Config.DISPATCH_COINS .. "  +🌀" .. Config.DISPATCH_CHAOS,
 		})
 	end
 
-	task.delay(Config.FATIGUE_TIME, function()
-		local d2 = _pds.get(player)
-		if not d2 then return end
-		for _, m in d2.monsters do
-			if m.id == monsterId and m.state == "Fatigued" then
-				m.state        = "Idle"
-				m.fatigueUntil = 0
-				_pds.save(player)
-				if player.Parent then
-					_ev:FireClient(player, {
-						monsters = d2.monsters,
-						toast    = "Гуппи отдохнул — готов к делу! 🐸",
-					})
-				end
-				break
-			end
-		end
-	end)
+	scheduleFatigueRecovery(player, monsterId, Config.FATIGUE_TIME)
 end
 
 function MissionService.init(playerDataService, evMonsterUpdated)

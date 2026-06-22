@@ -69,14 +69,22 @@ divider.BorderSizePixel  = 0
 divider.Parent           = panel
 
 -- ── Monster slot ───────────────────────────────────────────────────────────
-local slot = Instance.new("Frame")
+local slot = Instance.new("TextButton")
 slot.Size                   = UDim2.new(1, -32, 0, 110)
 slot.Position               = UDim2.new(0, 16, 0, 70)
 slot.BackgroundColor3       = Color3.fromRGB(28, 28, 42)
 slot.BackgroundTransparency = 0.2
 slot.BorderSizePixel        = 0
+slot.Text                   = ""
+slot.AutoButtonColor        = false
 slot.Parent                 = panel
 UiUtil.corner(slot, 10)
+
+local slotStroke = Instance.new("UIStroke")
+slotStroke.Color       = Color3.fromRGB(80, 220, 80)
+slotStroke.Thickness   = 2
+slotStroke.Transparency = 1
+slotStroke.Parent      = slot
 
 local slotIcon = Instance.new("TextLabel")
 slotIcon.Size                   = UDim2.new(0, 70, 1, 0)
@@ -203,8 +211,9 @@ UiUtil.corner(pickerBack, 8)
 local showToast = UiUtil.makeToast(gui, UDim2.new(0.5, -200, 0, 72), 400)
 
 -- ── State ──────────────────────────────────────────────────────────────────
-local playerBaseId:   number? = nil
-local lastMonsters: { any }?  = nil
+local playerBaseId:      number? = nil
+local lastMonsters:     { any }? = nil
+local selectedMonsterId: string? = nil
 
 local monsterLabels = {
 	icon   = slotIcon,
@@ -213,20 +222,52 @@ local monsterLabels = {
 	state  = slotState,
 }
 
-local function renderDispatch(monster: any?)
-	if not monster then
+local function getMonsterById(id: string?): any?
+	if not id or not lastMonsters then
+		return nil
+	end
+	for _, m in lastMonsters do
+		if m.id == id then
+			return m
+		end
+	end
+	return nil
+end
+
+local function getSelectedMonster(): any?
+	return getMonsterById(selectedMonsterId)
+end
+
+local function setSlotSelected(selected: boolean)
+	slotStroke.Transparency = if selected then 0 else 1
+	slot.BackgroundColor3 = if selected
+		then Color3.fromRGB(34, 48, 38)
+		else Color3.fromRGB(28, 28, 42)
+end
+
+local function renderDispatch()
+	local hasMonster = MonsterDisplay.first(lastMonsters) ~= nil
+	local selected = getSelectedMonster()
+
+	if not hasMonster then
 		dispatchBtn.Active           = false
 		dispatchBtn.AutoButtonColor  = false
 		dispatchBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
 		dispatchBtn.TextColor3       = Color3.fromRGB(120, 120, 140)
 		dispatchBtn.Text             = "Нет монстров"
-	elseif monster.state == "Idle" then
+	elseif not selected then
+		dispatchBtn.Active           = false
+		dispatchBtn.AutoButtonColor  = false
+		dispatchBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
+		dispatchBtn.TextColor3       = Color3.fromRGB(120, 120, 140)
+		dispatchBtn.Text             = "Выберите монстра для отправки"
+	elseif selected.state == "Idle" then
 		dispatchBtn.Active           = true
 		dispatchBtn.AutoButtonColor  = true
 		dispatchBtn.BackgroundColor3 = Color3.fromRGB(40, 160, 60)
 		dispatchBtn.TextColor3       = Color3.fromRGB(255, 255, 255)
 		dispatchBtn.Text             = "Отправить 🐸"
-	elseif monster.state == "OnMission" then
+	elseif selected.state == "OnMission" then
 		dispatchBtn.Active           = false
 		dispatchBtn.AutoButtonColor  = false
 		dispatchBtn.BackgroundColor3 = Color3.fromRGB(80, 70, 20)
@@ -243,6 +284,9 @@ end
 
 local function render(monsters: { any }?)
 	lastMonsters = monsters
+	if selectedMonsterId and not getMonsterById(selectedMonsterId) then
+		selectedMonsterId = nil
+	end
 	local monster = MonsterDisplay.first(monsters)
 	if MonsterDisplay.fill(monsterLabels, monster) then
 		slot.Visible       = true
@@ -250,9 +294,11 @@ local function render(monsters: { any }?)
 	else
 		slot.Visible       = false
 		emptyLabel.Visible = true
+		selectedMonsterId  = nil
 	end
+	setSlotSelected(selectedMonsterId ~= nil)
 	dispatchBtn.Visible = true
-	renderDispatch(monster)
+	renderDispatch()
 end
 
 local function setPickerVisible(visible: boolean)
@@ -272,8 +318,19 @@ local function setOpen(isOpen: boolean)
 	if not isOpen then
 		picker.Visible      = false
 		dispatchBtn.Visible = true
+		selectedMonsterId   = nil
 	end
 end
+
+slot.MouseButton1Click:Connect(function()
+	local monster = MonsterDisplay.first(lastMonsters)
+	if not monster then
+		return
+	end
+	selectedMonsterId = monster.id
+	setSlotSelected(true)
+	renderDispatch()
+end)
 
 -- ── Picker open ─────────────────────────────────────────────────────────────
 local function openPicker()
@@ -349,6 +406,7 @@ local function openLab(labBaseId: any)
 	end
 
 	playerBaseId = myId
+	selectedMonsterId = nil
 	render(data.monsters)
 	setOpen(true)
 end

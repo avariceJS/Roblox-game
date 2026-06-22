@@ -99,6 +99,7 @@ local function onPlayerAdded(player: Player)
 	end
 
 	BaseService.setupSpawn(player, data.baseId)
+	MissionService.syncPlayerMonsters(player)
 
 	task.defer(function()
 		if not player.Parent then

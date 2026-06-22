@@ -14,7 +14,7 @@ gui.ResetOnSpawn = false
 gui.Parent = localPlayer.PlayerGui
 
 local badge = Instance.new("Frame")
-badge.Size = UDim2.new(0, 200, 0, 48)
+badge.Size = UDim2.new(0, 300, 0, 48)
 badge.Position = UDim2.new(0, 16, 0, 16)
 badge.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 badge.BackgroundTransparency = 0.35
@@ -23,7 +23,7 @@ badge.Parent = gui
 UiUtil.corner(badge, 10)
 
 local coinLabel = Instance.new("TextLabel")
-coinLabel.Size = UDim2.new(0.55, 0, 1, 0)
+coinLabel.Size = UDim2.new(0.38, 0, 1, 0)
 coinLabel.BackgroundTransparency = 1
 coinLabel.Text = "🪙 …"
 coinLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
@@ -31,9 +31,19 @@ coinLabel.TextScaled = true
 coinLabel.Font = Enum.Font.GothamBold
 coinLabel.Parent = badge
 
+local chaosLabel = Instance.new("TextLabel")
+chaosLabel.Size = UDim2.new(0.28, 0, 1, 0)
+chaosLabel.Position = UDim2.new(0.38, 0, 0, 0)
+chaosLabel.BackgroundTransparency = 1
+chaosLabel.Text = "🌀 …"
+chaosLabel.TextColor3 = Color3.fromRGB(120, 200, 255)
+chaosLabel.TextScaled = true
+chaosLabel.Font = Enum.Font.GothamBold
+chaosLabel.Parent = badge
+
 local baseLabel = Instance.new("TextLabel")
-baseLabel.Size = UDim2.new(0.45, -4, 1, 0)
-baseLabel.Position = UDim2.new(0.55, 4, 0, 0)
+baseLabel.Size = UDim2.new(0.34, -4, 1, 0)
+baseLabel.Position = UDim2.new(0.66, 4, 0, 0)
 baseLabel.BackgroundTransparency = 1
 baseLabel.TextColor3 = Color3.fromRGB(80, 255, 110)
 baseLabel.TextScaled = true
@@ -65,15 +75,22 @@ local function setBase(id: number?)
 	baseLabel.Text = if id then "🏠 #" .. id else ""
 end
 
+local function setBalances(coins: number?, chaos: number?)
+	if coins ~= nil then
+		coinLabel.Text = "🪙 " .. coins
+	end
+	if chaos ~= nil then
+		chaosLabel.Text = "🌀 " .. chaos
+	end
+end
+
 local function showError(message: string)
 	bannerLabel.Text = message
 	banner.Visible = true
 end
 
-evMonsterUpdated.OnClientEvent:Connect(function(payload: { coins: number? })
-	if payload.coins then
-		coinLabel.Text = "🪙 " .. payload.coins
-	end
+evMonsterUpdated.OnClientEvent:Connect(function(payload: { coins: number?, chaos: number? })
+	setBalances(payload.coins, payload.chaos)
 end)
 
 evBaseAssigned.OnClientEvent:Connect(function(payload: { baseId: number })
@@ -84,7 +101,7 @@ task.spawn(function()
 	for _ = 1, 40 do
 		local result = fnGetData:InvokeServer()
 		if result.ok then
-			coinLabel.Text = "🪙 " .. result.coins
+			setBalances(result.coins, result.chaos)
 			setBase(result.baseId)
 			return
 		end
