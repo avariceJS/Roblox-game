@@ -4,6 +4,7 @@ local BaseUtil = require(game.ReplicatedStorage.src.Shared.BaseUtil)
 
 local _pds = nil
 local _ev  = nil
+local _bs  = nil
 local _missionsFolder: Folder
 
 local slowed: { [Humanoid]: number } = {}
@@ -122,12 +123,12 @@ local function runMission(player: Player, monsterId: string, targetId: number)
 	local data = _pds.get(player)
 	if not data then return end
 
-	local srcSpawn = BaseUtil.getSpawn(data.baseId)
-	local tgtSpawn = BaseUtil.getSpawn(targetId)
-	if not srcSpawn or not tgtSpawn then return end
+	local srcSpawn    = BaseUtil.getSpawn(data.baseId)
+	local tgtPlatform = BaseUtil.getMissionPlatform(targetId)
+	if not srcSpawn or not tgtPlatform then return end
 
 	local srcPos = srcSpawn.Position + Vector3.new(0, srcSpawn.Size.Y * 0.5 + 3, 0)
-	local tgtPos = tgtSpawn.Position + Vector3.new(0, tgtSpawn.Size.Y * 0.5 + 3, 0)
+	local tgtPos = tgtPlatform.Position + Vector3.new(0, tgtPlatform.Size.Y * 0.5 + 3, 0)
 
 	local walker = createWalker(srcPos)
 	TweenService:Create(
@@ -141,7 +142,7 @@ local function runMission(player: Player, monsterId: string, targetId: number)
 
 	if not player.Parent then return end
 
-	local puddlePos = tgtSpawn.Position + Vector3.new(0, tgtSpawn.Size.Y * 0.5, 0)
+	local puddlePos = tgtPlatform.Position + Vector3.new(0, tgtPlatform.Size.Y * 0.5, 0)
 	local puddle, conn = createPuddle(puddlePos)
 	task.delay(Config.PUDDLE_DURATION, function()
 		conn:Disconnect()
@@ -173,12 +174,22 @@ local function runMission(player: Player, monsterId: string, targetId: number)
 		})
 	end
 
+	if targetId > 0 and _bs then
+		local defender = _bs.getOccupant(targetId)
+		if defender and defender.Parent and defender ~= player then
+			_ev:FireClient(defender, {
+				toast = "⚠️ " .. player.Name .. " натравил монстра на твою базу!",
+			})
+		end
+	end
+
 	scheduleFatigueRecovery(player, monsterId, Config.FATIGUE_TIME)
 end
 
-function MissionService.init(playerDataService, evMonsterUpdated)
+function MissionService.init(playerDataService, evMonsterUpdated, baseService)
 	_pds = playerDataService
 	_ev  = evMonsterUpdated
+	_bs  = baseService
 	local existing = workspace:FindFirstChild("Missions")
 	if existing then
 		existing:Destroy()
@@ -194,16 +205,26 @@ function MissionService.dispatch(player: Player, targetBaseId: number, requested
 		return { ok = false, message = "Данные не загружены" }
 	end
 
-	local myId  = BaseUtil.normalizeId(data.baseId)
-	local tgtId = BaseUtil.normalizeId(targetBaseId)
-
+	local myId = BaseUtil.normalizeId(data.baseId)
 	if not myId then
 		return { ok = false, message = "База не назначена" }
 	end
-	if not tgtId or tgtId == myId then
+
+	local tgtId: number
+	if targetBaseId == 0 then
+		tgtId = 0
+	else
+		local n = BaseUtil.normalizeId(targetBaseId)
+		if not n then
+			return { ok = false, message = "Выбери чужую базу" }
+		end
+		tgtId = n
+	end
+
+	if tgtId == myId then
 		return { ok = false, message = "Выбери чужую базу" }
 	end
-	if not BaseUtil.getSpawn(tgtId) then
+	if not BaseUtil.getMissionPlatform(tgtId) then
 		return { ok = false, message = "База #" .. tgtId .. " не найдена" }
 	end
 

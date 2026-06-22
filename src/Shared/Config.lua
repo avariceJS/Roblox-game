@@ -15,6 +15,10 @@ return {
 	SLOW_SPEED           = 8,
 	SLOW_DURATION        = 4,
 	LAB_PROMPT_DISTANCE  = 14,
+	STUDIO_WALK_SPEED    = 64,
+
+	NPC_HOME_ID       = 0,
+	NPC_HOME_POSITION = Vector3.new(90, 0.5, 35),
 
 	BASE_LAYOUT = {
 		{ id = 1, position = Vector3.new(-45, 0.5, 35), color = Color3.fromRGB(220, 55, 55) },

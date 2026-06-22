@@ -40,13 +40,15 @@
 - [x] Награда (монеты, chaos), fatigue после задания
 - [x] Состояния OnMission → Fatigued → Idle (recovery + toast)
 
-## Phase 4 — PvP Attack ← **СЛЕДУЮЩИЙ**
+## Phase 4 — PvP Attack ✅
 
-- [ ] Список баз других **живых игроков** на сервере (исключить свою)
-- [ ] NPC-дом как постоянная цель (всегда доступна, не занята игроком)
-- [ ] Attack flow: цель → монстр → тип пакости
-- [ ] Server validates + resolves
-- [ ] Уведомления атакующему и защитнику
+- [x] Список баз других **живых игроков** на сервере (исключить свою)
+- [x] NPC-дом как постоянная цель (Workspace.NpcHomes/House, id=0)
+- [x] Пикер целей динамический: targets из GetPlayerData, кнопки по слотам
+- [x] Server validates + resolves (id=0 обрабатывается отдельно, getMissionPlatform)
+- [x] Уведомление защитнику (toast через MonsterUpdated, без лишнего remote)
+
+## Phase 5 — Defense ← **СЛЕДУЮЩИЙ**
 
 ## Phase 5 — Defense
 

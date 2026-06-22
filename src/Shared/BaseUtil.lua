@@ -41,4 +41,16 @@ function BaseUtil.getLabFloorPos(baseId: number): Vector3?
 	return Vector3.new(spawn.Position.X, topY, spawn.Position.Z) + side
 end
 
+function BaseUtil.getNpcHome(): BasePart?
+	local folder = workspace:FindFirstChild("NpcHomes")
+	return folder and folder:FindFirstChild("House") :: BasePart?
+end
+
+function BaseUtil.getMissionPlatform(targetId: number): BasePart?
+	if targetId < 1 then
+		return BaseUtil.getNpcHome()
+	end
+	return BaseUtil.getSpawn(targetId)
+end
+
 return BaseUtil

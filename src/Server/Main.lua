@@ -5,15 +5,18 @@ local Shared = src:WaitForChild("Shared")
 local Remotes = src:WaitForChild("Remotes")
 local Server = src:WaitForChild("Server")
 
+local Config          = require(Shared.Config)
 local PlayerDataService = require(Server.PlayerDataService)
-local BaseMapService = require(Server.BaseMapService)
-local BaseService = require(Server.BaseService)
+local BaseMapService  = require(Server.BaseMapService)
+local BaseService     = require(Server.BaseService)
+local NpcService      = require(Server.NpcService)
 local MonsterService  = require(Server.MonsterService)
 local LabService      = require(Server.LabService)
 local MissionService  = require(Server.MissionService)
-local BaseUtil = require(Shared.BaseUtil)
+local BaseUtil        = require(Shared.BaseUtil)
 
 BaseMapService.ensure()
+NpcService.init()
 
 local function ensureRemote(name: string, class: string): Instance
 	local existing = Remotes:FindFirstChild(name)
@@ -35,14 +38,14 @@ local evBaseAssigned = ensureRemote("BaseAssigned", "RemoteEvent") :: RemoteEven
 local fnDispatch     = ensureRemote("DispatchMonster", "RemoteFunction") :: RemoteFunction
 
 LabService.init()
-MissionService.init(PlayerDataService, evMonsterUpdated)
+MissionService.init(PlayerDataService, evMonsterUpdated, BaseService)
 
 fnDispatch.OnServerInvoke = function(player: Player, payload: { targetBaseId: number?, monsterId: string? })
-	local tgtId = BaseUtil.normalizeId(payload and payload.targetBaseId)
-	if not tgtId then
+	local rawId = payload and payload.targetBaseId
+	if rawId == nil then
 		return { ok = false, message = "Неверная цель" }
 	end
-	return MissionService.dispatch(player, tgtId, payload and payload.monsterId)
+	return MissionService.dispatch(player, rawId, payload and payload.monsterId)
 end
 
 local function waitForPlayerData(player: Player)
@@ -65,12 +68,26 @@ fnGetData.OnServerInvoke = function(player: Player)
 		return { ok = false, message = "Все 6 баз заняты — зайди позже!" }
 	end
 
+	local myBaseId = BaseUtil.normalizeId(data.baseId)
+	local targets = {}
+	table.insert(targets, { id = Config.NPC_HOME_ID, label = "🏚️  NPC-дом", targetType = "npc" })
+	for baseId, occupant in BaseService.getOccupied() do
+		if baseId ~= myBaseId then
+			table.insert(targets, {
+				id         = baseId,
+				label      = "👤 " .. occupant.Name .. " — База #" .. baseId,
+				targetType = "player",
+			})
+		end
+	end
+
 	return {
-		ok = true,
-		coins = data.coins,
-		chaos = data.chaos,
-		baseId = BaseUtil.normalizeId(data.baseId),
+		ok       = true,
+		coins    = data.coins,
+		chaos    = data.chaos,
+		baseId   = myBaseId,
 		monsters = data.monsters,
+		targets  = targets,
 	}
 end
 

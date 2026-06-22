@@ -1,3 +1,5 @@
+local RunService = game:GetService("RunService")
+
 local Config = require(game.ReplicatedStorage.src.Shared.Config)
 local BaseUtil = require(game.ReplicatedStorage.src.Shared.BaseUtil)
 
@@ -42,17 +44,31 @@ function BaseService.setupSpawn(player: Player, baseId: number)
 	spawn.Neutral = false
 	player.RespawnLocation = spawn
 
-	local function teleport(character: Model)
+	local function onCharacter(character: Model)
 		local hrp = character:WaitForChild("HumanoidRootPart", 10) :: BasePart?
 		if hrp then
 			hrp.CFrame = spawn.CFrame + Vector3.new(0, 4, 0)
 		end
+		if RunService:IsStudio() then
+			local hum = character:WaitForChild("Humanoid", 10) :: Humanoid?
+			if hum then
+				hum.WalkSpeed = Config.STUDIO_WALK_SPEED
+			end
+		end
 	end
 
-	player.CharacterAdded:Connect(teleport)
+	player.CharacterAdded:Connect(onCharacter)
 	if player.Character then
-		teleport(player.Character)
+		onCharacter(player.Character)
 	end
+end
+
+function BaseService.getOccupied(): { [number]: Player }
+	return occupied
+end
+
+function BaseService.getOccupant(baseId: number): Player?
+	return occupied[baseId]
 end
 
 return BaseService

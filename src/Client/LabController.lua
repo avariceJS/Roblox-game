@@ -177,24 +177,28 @@ pickerTitle.TextScaled             = true
 pickerTitle.Font                   = Enum.Font.GothamBold
 pickerTitle.Parent                 = picker
 
-local baseButtons: { [number]: TextButton } = {}
+local MAX_PICKER_BTNS = 7
+local pickerBtns: { TextButton } = {}
+local pickerBtnIds: { [number]: number } = {}
 
-for i = 1, 6 do
+for i = 1, MAX_PICKER_BTNS do
 	local col = (i - 1) % 2
 	local row = math.floor((i - 1) / 2)
 	local btn = Instance.new("TextButton")
-	btn.Size                   = UDim2.new(0.5, -6, 0, 64)
-	btn.Position               = UDim2.new(col * 0.5, col == 0 and 4 or 2, 0, 54 + row * 72)
+	btn.Size                   = UDim2.new(0.5, -6, 0, 56)
+	btn.Position               = UDim2.new(col * 0.5, col == 0 and 4 or 2, 0, 54 + row * 64)
 	btn.BackgroundColor3       = Color3.fromRGB(35, 45, 65)
 	btn.BackgroundTransparency = 0.1
 	btn.BorderSizePixel        = 0
-	btn.Text                   = "🏚️  База #" .. i
+	btn.Text                   = ""
 	btn.TextColor3             = Color3.fromRGB(200, 220, 255)
 	btn.TextScaled             = true
 	btn.Font                   = Enum.Font.GothamBold
+	btn.Visible                = false
 	btn.Parent                 = picker
 	UiUtil.corner(btn, 8)
-	baseButtons[i] = btn
+	pickerBtns[i] = btn
+	pickerBtnIds[i] = -1
 end
 
 local pickerBack = Instance.new("TextButton")
@@ -215,6 +219,7 @@ local showToast = UiUtil.makeToast(gui, UDim2.new(0.5, -200, 0, 72), 400)
 -- ── State ──────────────────────────────────────────────────────────────────
 local playerBaseId:      number? = nil
 local lastMonsters:     { any }? = nil
+local lastTargets:       { any }  = {}
 local selectedMonsterId: string? = nil
 local fatigueTickConn: RBXScriptConnection? = nil
 
@@ -400,28 +405,34 @@ end)
 
 -- ── Picker open ─────────────────────────────────────────────────────────────
 local function openPicker()
-	for i, btn in baseButtons do
-		if i == playerBaseId then
-			btn.Active           = false
-			btn.AutoButtonColor  = false
-			btn.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
-			btn.BackgroundTransparency = 0.5
-			btn.TextColor3       = Color3.fromRGB(70, 70, 90)
-		else
-			btn.Active           = true
-			btn.AutoButtonColor  = true
-			btn.BackgroundColor3 = Color3.fromRGB(35, 45, 65)
+	for slotIdx = 1, MAX_PICKER_BTNS do
+		local target = lastTargets[slotIdx]
+		local btn    = pickerBtns[slotIdx]
+		if target then
+			pickerBtnIds[slotIdx]      = target.id
+			btn.Text                   = target.label
+			btn.Visible                = true
+			btn.Active                 = true
+			btn.AutoButtonColor        = true
+			btn.BackgroundColor3       = if target.targetType == "npc"
+				then Color3.fromRGB(80, 45, 20)
+				else Color3.fromRGB(35, 45, 65)
 			btn.BackgroundTransparency = 0.1
-			btn.TextColor3       = Color3.fromRGB(200, 220, 255)
+			btn.TextColor3             = Color3.fromRGB(200, 220, 255)
+		else
+			btn.Visible        = false
+			pickerBtnIds[slotIdx] = -1
 		end
 	end
 	setPickerVisible(true)
 end
 
-for i, btn in baseButtons do
+for slotIdx = 1, MAX_PICKER_BTNS do
+	local btn = pickerBtns[slotIdx]
 	btn.MouseButton1Click:Connect(function()
 		if not btn.Active then return end
-		local tgtId = i
+		local tgtId = pickerBtnIds[slotIdx]
+		if tgtId == -1 then return end
 		setOpen(false)
 
 		local result = fnDispatch:InvokeServer({ targetBaseId = tgtId, monsterId = selectedMonsterId })
@@ -471,7 +482,8 @@ local function openLab(labBaseId: any)
 		return
 	end
 
-	playerBaseId = myId
+	playerBaseId      = myId
+	lastTargets       = data.targets or {}
 	selectedMonsterId = nil
 	render(data.monsters)
 	setOpen(true)
@@ -485,7 +497,11 @@ ProximityPromptService.PromptTriggered:Connect(function(prompt: ProximityPrompt,
 	end
 end)
 
-evMonsterUpdated.OnClientEvent:Connect(function(payload: { monsters: { any }? })
+evMonsterUpdated.OnClientEvent:Connect(function(payload)
+	if payload.toast and not payload.monsters then
+		showToast(payload.toast)
+		return
+	end
 	if not payload.monsters then
 		return
 	end
