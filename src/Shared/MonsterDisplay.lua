@@ -16,6 +16,26 @@ local STATE_COLOR = {
 
 local MonsterDisplay = {}
 
+function MonsterDisplay.fatigueSecondsLeft(monster: any): number?
+	if monster.state ~= "Fatigued" then
+		return nil
+	end
+	local untilTs = monster.fatigueUntil
+	if not untilTs or untilTs <= 0 then
+		return nil
+	end
+	return math.max(0, untilTs - os.time())
+end
+
+function MonsterDisplay.stateText(monster: any): string
+	local base = STATE_TEXT[monster.state] or monster.state
+	local left = MonsterDisplay.fatigueSecondsLeft(monster)
+	if left ~= nil then
+		return base .. " · " .. left .. " сек"
+	end
+	return base
+end
+
 function MonsterDisplay.first(monsters: { any }?): any?
 	return monsters and monsters[1]
 end
@@ -34,7 +54,7 @@ function MonsterDisplay.fill(labels: {
 	labels.icon.Text = def.icon
 	labels.name.Text = def.displayName
 	labels.rarity.Text = def.rarityDisplay
-	labels.state.Text = STATE_TEXT[monster.state] or monster.state
+	labels.state.Text = MonsterDisplay.stateText(monster)
 	labels.state.TextColor3 = STATE_COLOR[monster.state] or Color3.new(1, 1, 1)
 	return true
 end

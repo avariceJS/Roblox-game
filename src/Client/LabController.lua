@@ -1,5 +1,6 @@
 local Players = game:GetService("Players")
 local ProximityPromptService = game:GetService("ProximityPromptService")
+local RunService = game:GetService("RunService")
 
 local UiUtil         = require(script.Parent.UiUtil)
 local MonsterDisplay = require(game.ReplicatedStorage.src.Shared.MonsterDisplay)
@@ -10,6 +11,7 @@ local src     = game.ReplicatedStorage:WaitForChild("src")
 local Remotes = src:WaitForChild("Remotes")
 local fnGetData  = Remotes:WaitForChild("GetPlayerData")  :: RemoteFunction
 local fnDispatch = Remotes:WaitForChild("DispatchMonster") :: RemoteFunction
+local evMonsterUpdated = Remotes:WaitForChild("MonsterUpdated") :: RemoteEvent
 
 -- ── GUI ────────────────────────────────────────────────────────────────────
 local gui = Instance.new("ScreenGui")
@@ -214,6 +216,7 @@ local showToast = UiUtil.makeToast(gui, UDim2.new(0.5, -200, 0, 72), 400)
 local playerBaseId:      number? = nil
 local lastMonsters:     { any }? = nil
 local selectedMonsterId: string? = nil
+local fatigueTickConn: RBXScriptConnection? = nil
 
 local monsterLabels = {
 	icon   = slotIcon,
@@ -243,6 +246,65 @@ local function setSlotSelected(selected: boolean)
 	slot.BackgroundColor3 = if selected
 		then Color3.fromRGB(34, 48, 38)
 		else Color3.fromRGB(28, 28, 42)
+end
+
+local function stopFatigueTick()
+	if fatigueTickConn then
+		fatigueTickConn:Disconnect()
+		fatigueTickConn = nil
+	end
+end
+
+local function hasFatiguedMonster(monsters: { any }?): boolean
+	if not monsters then
+		return false
+	end
+	for _, m in monsters do
+		if m.state == "Fatigued" then
+			return true
+		end
+	end
+	return false
+end
+
+local function refreshFatigueLabels()
+	local monster = MonsterDisplay.first(lastMonsters)
+	if monster then
+		MonsterDisplay.fill(monsterLabels, monster)
+	end
+	renderDispatch()
+end
+
+local function startFatigueTickIfNeeded()
+	stopFatigueTick()
+	if not overlay.Visible or not hasFatiguedMonster(lastMonsters) then
+		return
+	end
+
+	local elapsed = 0
+	fatigueTickConn = RunService.Heartbeat:Connect(function(dt)
+		if not overlay.Visible then
+			stopFatigueTick()
+			return
+		end
+		elapsed += dt
+		if elapsed < 1 then
+			return
+		end
+		elapsed = 0
+		refreshFatigueLabels()
+		if not hasFatiguedMonster(lastMonsters) then
+			stopFatigueTick()
+		end
+	end)
+end
+
+local function fatigueButtonSuffix(monster: any): string
+	local left = MonsterDisplay.fatigueSecondsLeft(monster)
+	if left == nil then
+		return ""
+	end
+	return " · " .. left .. " сек"
 end
 
 local function renderDispatch()
@@ -278,7 +340,7 @@ local function renderDispatch()
 		dispatchBtn.AutoButtonColor  = false
 		dispatchBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 80)
 		dispatchBtn.TextColor3       = Color3.fromRGB(140, 140, 255)
-		dispatchBtn.Text             = "Отдыхает 💤"
+		dispatchBtn.Text             = "Отдыхает 💤" .. fatigueButtonSuffix(selected)
 	end
 end
 
@@ -299,6 +361,7 @@ local function render(monsters: { any }?)
 	setSlotSelected(selectedMonsterId ~= nil)
 	dispatchBtn.Visible = true
 	renderDispatch()
+	startFatigueTickIfNeeded()
 end
 
 local function setPickerVisible(visible: boolean)
@@ -319,6 +382,9 @@ local function setOpen(isOpen: boolean)
 		picker.Visible      = false
 		dispatchBtn.Visible = true
 		selectedMonsterId   = nil
+		stopFatigueTick()
+	else
+		startFatigueTickIfNeeded()
 	end
 end
 
@@ -416,6 +482,16 @@ ProximityPromptService.PromptTriggered:Connect(function(prompt: ProximityPrompt,
 	local model = prompt:FindFirstAncestorWhichIsA("Model")
 	if model then
 		openLab(model:GetAttribute("BaseId"))
+	end
+end)
+
+evMonsterUpdated.OnClientEvent:Connect(function(payload: { monsters: { any }? })
+	if not payload.monsters then
+		return
+	end
+	lastMonsters = payload.monsters
+	if overlay.Visible and not picker.Visible then
+		render(payload.monsters)
 	end
 end)
 

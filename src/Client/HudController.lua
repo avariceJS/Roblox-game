@@ -71,6 +71,8 @@ bannerLabel.TextWrapped = true
 bannerLabel.Font = Enum.Font.Gotham
 bannerLabel.Parent = banner
 
+local showToast = UiUtil.makeToast(gui, UDim2.new(0.5, -200, 0, 72), 400)
+
 local function setBase(id: number?)
 	baseLabel.Text = if id then "🏠 #" .. id else ""
 end
@@ -89,8 +91,11 @@ local function showError(message: string)
 	banner.Visible = true
 end
 
-evMonsterUpdated.OnClientEvent:Connect(function(payload: { coins: number?, chaos: number? })
+evMonsterUpdated.OnClientEvent:Connect(function(payload: { coins: number?, chaos: number?, toast: string? })
 	setBalances(payload.coins, payload.chaos)
+	if payload.toast then
+		showToast(payload.toast)
+	end
 end)
 
 evBaseAssigned.OnClientEvent:Connect(function(payload: { baseId: number })
