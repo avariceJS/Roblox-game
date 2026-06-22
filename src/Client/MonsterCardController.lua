@@ -10,9 +10,11 @@ local fnGetData = Remotes:WaitForChild("GetPlayerData") :: RemoteFunction
 local evMonsterUpdated = Remotes:WaitForChild("MonsterUpdated") :: RemoteEvent
 
 local gui = Instance.new("ScreenGui")
-gui.Name = "MonsterHUD"
+gui.Name         = "MonsterHUD"
 gui.ResetOnSpawn = false
-gui.Parent = localPlayer.PlayerGui
+gui.Parent       = localPlayer.PlayerGui
+
+local showToast = UiUtil.makeToast(gui, UDim2.new(0.5, -200, 0, 16), 400)
 
 local card = Instance.new("Frame")
 card.Size = UDim2.new(0, 200, 0, 90)
@@ -80,6 +82,9 @@ end
 evMonsterUpdated.OnClientEvent:Connect(function(payload: { [string]: any })
 	if payload.monsters then
 		refresh(payload.monsters)
+	end
+	if payload.toast then
+		showToast(payload.toast)
 	end
 end)
 

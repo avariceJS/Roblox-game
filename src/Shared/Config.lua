@@ -6,6 +6,15 @@ return {
 
 	BASE_SIZE = Vector3.new(14, 1, 14),
 
+	TRAVEL_TIME     = 8,
+	DISPATCH_COINS  = 25,
+	DISPATCH_CHAOS  = 10,
+	FATIGUE_TIME    = 30,
+	PUDDLE_RADIUS   = 6,
+	PUDDLE_DURATION = 10,
+	SLOW_SPEED      = 8,
+	SLOW_DURATION   = 4,
+
 	BASE_LAYOUT = {
 		{ id = 1, position = Vector3.new(-45, 0.5, 35), color = Color3.fromRGB(220, 55, 55) },
 		{ id = 2, position = Vector3.new(-22, 0.5, 35), color = Color3.fromRGB(35, 35, 40) },

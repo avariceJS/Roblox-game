@@ -5,7 +5,8 @@ local UiUtil = require(script.Parent.UiUtil)
 local localPlayer = Players.LocalPlayer
 local Remotes = game.ReplicatedStorage:WaitForChild("src"):WaitForChild("Remotes")
 local fnGetData = Remotes:WaitForChild("GetPlayerData") :: RemoteFunction
-local evBaseAssigned = Remotes:WaitForChild("BaseAssigned") :: RemoteEvent
+local evBaseAssigned   = Remotes:WaitForChild("BaseAssigned")   :: RemoteEvent
+local evMonsterUpdated = Remotes:WaitForChild("MonsterUpdated") :: RemoteEvent
 
 local gui = Instance.new("ScreenGui")
 gui.Name = "HUD"
@@ -68,6 +69,12 @@ local function showError(message: string)
 	bannerLabel.Text = message
 	banner.Visible = true
 end
+
+evMonsterUpdated.OnClientEvent:Connect(function(payload: { coins: number? })
+	if payload.coins then
+		coinLabel.Text = "🪙 " .. payload.coins
+	end
+end)
 
 evBaseAssigned.OnClientEvent:Connect(function(payload: { baseId: number })
 	setBase(payload.baseId)

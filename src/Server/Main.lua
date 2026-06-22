@@ -8,8 +8,9 @@ local Server = src:WaitForChild("Server")
 local PlayerDataService = require(Server.PlayerDataService)
 local BaseMapService = require(Server.BaseMapService)
 local BaseService = require(Server.BaseService)
-local MonsterService = require(Server.MonsterService)
-local LabService = require(Server.LabService)
+local MonsterService  = require(Server.MonsterService)
+local LabService      = require(Server.LabService)
+local MissionService  = require(Server.MissionService)
 local Config = require(Shared.Config)
 local BaseUtil = require(Shared.BaseUtil)
 
@@ -42,8 +43,18 @@ end
 local fnGetData = ensureRemote("GetPlayerData", "RemoteFunction") :: RemoteFunction
 local evMonsterUpdated = ensureRemote("MonsterUpdated", "RemoteEvent") :: RemoteEvent
 local evBaseAssigned = ensureRemote("BaseAssigned", "RemoteEvent") :: RemoteEvent
+local fnDispatch     = ensureRemote("DispatchMonster", "RemoteFunction") :: RemoteFunction
 
 LabService.init(Config)
+MissionService.init(PlayerDataService, evMonsterUpdated)
+
+fnDispatch.OnServerInvoke = function(player: Player, payload: { targetBaseId: number? })
+	local tgtId = BaseUtil.normalizeId(payload and payload.targetBaseId)
+	if not tgtId then
+		return { ok = false, message = "Неверная цель" }
+	end
+	return MissionService.dispatch(player, tgtId)
+end
 
 local function waitForPlayerData(player: Player)
 	for _ = 1, 50 do
