@@ -174,15 +174,6 @@ local function runMission(player: Player, monsterId: string, targetId: number)
 		})
 	end
 
-	if targetId > 0 and _bs then
-		local defender = _bs.getOccupant(targetId)
-		if defender and defender.Parent and defender ~= player then
-			_ev:FireClient(defender, {
-				toast = "⚠️ " .. player.Name .. " натравил монстра на твою базу!",
-			})
-		end
-	end
-
 	scheduleFatigueRecovery(player, monsterId, Config.FATIGUE_TIME)
 end
 
@@ -262,6 +253,15 @@ function MissionService.dispatch(player: Player, targetBaseId: number, requested
 	local monsterId = monster.id
 	monster.state = "OnMission"
 	_pds.save(player)
+
+	if tgtId > 0 and _bs then
+		local defender = _bs.getOccupant(tgtId)
+		if defender and defender.Parent and defender ~= player then
+			_ev:FireClient(defender, {
+				toast = "⚠️ " .. player.Name .. " отправил монстра на твою базу!",
+			})
+		end
+	end
 
 	_ev:FireClient(player, { monsters = data.monsters })
 

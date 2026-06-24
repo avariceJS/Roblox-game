@@ -498,10 +498,6 @@ ProximityPromptService.PromptTriggered:Connect(function(prompt: ProximityPrompt,
 end)
 
 evMonsterUpdated.OnClientEvent:Connect(function(payload)
-	if payload.toast and not payload.monsters then
-		showToast(payload.toast)
-		return
-	end
 	if not payload.monsters then
 		return
 	end
