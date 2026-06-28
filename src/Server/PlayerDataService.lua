@@ -15,8 +15,11 @@ local function defaultData()
 		monsters = {},
 		traps = {},
 		jail = {},
-		questCooldownUntil = 0,
-		baseUpgrades = {},
+		questCooldownUntil  = 0,
+		baseUpgrades        = {},
+		hasVip              = false,
+		hasExtraSlot        = false,
+		processedPurchases  = {},
 	}
 end
 
@@ -31,8 +34,11 @@ function PlayerDataService.load(player: Player)
 		data.traps = data.traps or {}
 		data.jail = data.jail or {}
 		data.chaos = data.chaos or 0
-		data.questCooldownUntil = data.questCooldownUntil or 0
-		data.baseUpgrades = data.baseUpgrades or {}
+		data.questCooldownUntil  = data.questCooldownUntil or 0
+		data.baseUpgrades        = data.baseUpgrades or {}
+		data.hasVip              = data.hasVip or false
+		data.hasExtraSlot        = data.hasExtraSlot or false
+		data.processedPurchases  = data.processedPurchases or {}
 		data.baseId = BaseUtil.normalizeId(data.baseId)
 	else
 		if not ok then

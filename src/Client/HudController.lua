@@ -1,4 +1,5 @@
-local Players = game:GetService("Players")
+local Players      = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
 
 local UiUtil = require(script.Parent.UiUtil)
 
@@ -78,11 +79,22 @@ local function setBase(id: number?)
 end
 
 local function setBalances(coins: number?, chaos: number?)
+	local changed = false
 	if coins ~= nil then
 		coinLabel.Text = "🪙 " .. coins
+		changed = true
 	end
 	if chaos ~= nil then
 		chaosLabel.Text = "🌀 " .. chaos
+		changed = true
+	end
+	if changed then
+		badge.BackgroundColor3 = Color3.fromRGB(55, 50, 10)
+		TweenService:Create(
+			badge,
+			TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+			{ BackgroundColor3 = Color3.fromRGB(20, 20, 20) }
+		):Play()
 	end
 end
 

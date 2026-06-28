@@ -9,7 +9,7 @@ return {
 	TRAVEL_TIME     = 8,
 	DISPATCH_COINS  = 25,
 	DISPATCH_CHAOS  = 10,
-	FATIGUE_TIME    = 10,
+	FATIGUE_TIME    = 45,
 	DISPATCH_XP     = 10,
 	XP_PER_LEVEL    = 30,
 	PUDDLE_RADIUS        = 6,
@@ -25,7 +25,7 @@ return {
 	RANSOM_MAX          = 500,
 	SHOP_PRICES         = { Slime = 50, Gremlin = 100, ShadowRat = 150, Homunculus = 250 },
 	QUEST_REWARD        = 25,
-	QUEST_COOLDOWN      = 120,
+	QUEST_COOLDOWN      = 90,
 
 	SUBJUGATE_CHANCE       = 0.5,
 	SUBJUGATE_ATTEMPTS_MAX = 3,
@@ -33,6 +33,14 @@ return {
 
 	UPGRADE_PRICES        = { reinforcedTrap = 150 },
 	REINFORCED_TRAP_CATCH = 0.4,
+
+	PRODUCT_INSTANT_RANSOM  = 0,
+	PRODUCT_FORCE_SUBJUGATE = 0,
+	PRODUCT_FAST_RECOVERY   = 0,
+	GAMEPASS_VIP            = 0,
+	GAMEPASS_EXTRA_SLOT     = 0,
+	VIP_BONUS               = 0.1,
+	MAX_MONSTERS            = 4,
 
 	NPC_HOME_ID       = 0,
 	NPC_HOME_POSITION = Vector3.new(90, 0.5, 35),

@@ -18,9 +18,10 @@ local RansomService    = require(Server.RansomService)
 local ShopService      = require(Server.ShopService)
 local ShopMapService   = require(Server.ShopMapService)
 local JailMapService   = require(Server.JailMapService)
-local JailBreakService    = require(Server.JailBreakService)
-local SubjugationService  = require(Server.SubjugationService)
-local BaseUtil            = require(Shared.BaseUtil)
+local JailBreakService      = require(Server.JailBreakService)
+local SubjugationService    = require(Server.SubjugationService)
+local MonetizationService   = require(Server.MonetizationService)
+local BaseUtil              = require(Shared.BaseUtil)
 
 BaseMapService.ensure()
 NpcService.init()
@@ -52,12 +53,14 @@ local fnBuyMonster        = ensureRemote("BuyMonster",        "RemoteFunction") 
 local fnDoQuest           = ensureRemote("DoQuest",           "RemoteFunction") :: RemoteFunction
 local fnAttemptJailBreak  = ensureRemote("AttemptJailBreak",   "RemoteFunction") :: RemoteFunction
 local fnAttemptSubjugate  = ensureRemote("AttemptSubjugate",   "RemoteFunction") :: RemoteFunction
-local fnBuyUpgrade        = ensureRemote("BuyUpgrade",          "RemoteFunction") :: RemoteFunction
+local fnBuyUpgrade           = ensureRemote("BuyUpgrade",           "RemoteFunction") :: RemoteFunction
+local fnSetPurchaseIntent    = ensureRemote("SetPurchaseIntent",    "RemoteFunction") :: RemoteFunction
 
 LabService.init()
 MissionService.init(PlayerDataService, evMonsterUpdated, BaseService)
 JailBreakService.init(evMonsterUpdated)
 SubjugationService.init(evMonsterUpdated)
+MonetizationService.init(PlayerDataService, evMonsterUpdated)
 
 fnSetTrap.OnServerInvoke = function(player: Player, payload: { active: boolean })
 	local data = PlayerDataService.get(player)
@@ -171,15 +174,26 @@ fnDoQuest.OnServerInvoke = function(player: Player)
 	if now < (data.questCooldownUntil or 0) then
 		return { ok = false, message = "Квест ещё на перезарядке" }
 	end
-	data.coins             = data.coins + Config.QUEST_REWARD
+	local vipBonus = data.hasVip == true and Config.VIP_BONUS or 0
+	local earned   = math.floor(Config.QUEST_REWARD * (1 + vipBonus))
+	data.coins             = data.coins + earned
 	data.questCooldownUntil = now + Config.QUEST_COOLDOWN
 	PlayerDataService.save(player)
 	evMonsterUpdated:FireClient(player, {
 		coins       = data.coins,
 		nextQuestAt = data.questCooldownUntil,
-		toast       = "Выполнил мелкую работу! +💰" .. Config.QUEST_REWARD,
+		toast       = "Выполнил мелкую работу! +💰" .. earned .. (vipBonus > 0 and " 💎" or ""),
 	})
 	return { ok = true }
+end
+
+fnSetPurchaseIntent.OnServerInvoke = function(player: Player, payload: { productKey: string?, monsterId: string? })
+	local productKey = payload and payload.productKey
+	local monsterId  = payload and payload.monsterId
+	if not productKey then
+		return { ok = false, message = "Неверные данные" }
+	end
+	return MonetizationService.setPurchaseIntent(player, productKey, monsterId)
 end
 
 fnAttemptSubjugate.OnServerInvoke = function(player: Player, payload: { monsterId: string? })
@@ -279,7 +293,9 @@ fnGetData.OnServerInvoke = function(player: Player)
 		jail        = data.jail or {},
 		hasCage     = TrapService.hasCage(data),
 		nextQuestAt = data.questCooldownUntil or 0,
-		upgrades    = data.baseUpgrades or {},
+		upgrades     = data.baseUpgrades or {},
+		hasVip       = data.hasVip or false,
+		hasExtraSlot = data.hasExtraSlot or false,
 	}
 end
 
@@ -298,6 +314,7 @@ local function onPlayerAdded(player: Player)
 
 	BaseService.setupSpawn(player, data.baseId)
 	MissionService.syncPlayerMonsters(player)
+	task.spawn(MonetizationService.checkGamePasses, player, data)
 
 	task.defer(function()
 		if not player.Parent then

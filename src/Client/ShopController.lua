@@ -1,19 +1,22 @@
 local Players                = game:GetService("Players")
 local ProximityPromptService = game:GetService("ProximityPromptService")
 local RunService             = game:GetService("RunService")
+local MarketplaceService     = game:GetService("MarketplaceService")
 
 local UiUtil   = require(script.Parent.UiUtil)
 local BaseUtil = require(game.ReplicatedStorage.src.Shared.BaseUtil)
+local Config   = require(game.ReplicatedStorage.src.Shared.Config)
 
 local localPlayer = Players.LocalPlayer
 local src     = game.ReplicatedStorage:WaitForChild("src")
 local Remotes = src:WaitForChild("Remotes")
 
-local fnGetData        = Remotes:WaitForChild("GetPlayerData")  :: RemoteFunction
-local fnBuyMonster     = Remotes:WaitForChild("BuyMonster")     :: RemoteFunction
-local fnDoQuest        = Remotes:WaitForChild("DoQuest")        :: RemoteFunction
-local fnBuyUpgrade     = Remotes:WaitForChild("BuyUpgrade")     :: RemoteFunction
-local evMonsterUpdated = Remotes:WaitForChild("MonsterUpdated") :: RemoteEvent
+local fnGetData           = Remotes:WaitForChild("GetPlayerData")     :: RemoteFunction
+local fnBuyMonster        = Remotes:WaitForChild("BuyMonster")        :: RemoteFunction
+local fnDoQuest           = Remotes:WaitForChild("DoQuest")           :: RemoteFunction
+local fnBuyUpgrade        = Remotes:WaitForChild("BuyUpgrade")        :: RemoteFunction
+local fnSetPurchaseIntent = Remotes:WaitForChild("SetPurchaseIntent") :: RemoteFunction
+local evMonsterUpdated    = Remotes:WaitForChild("MonsterUpdated")    :: RemoteEvent
 
 local gui = Instance.new("ScreenGui")
 gui.Name           = "ShopHUD"
@@ -31,8 +34,8 @@ overlay.Visible                = false
 overlay.Parent                 = gui
 
 local panel = Instance.new("Frame")
-panel.Size                   = UDim2.new(0, 360, 0, 540)
-panel.Position               = UDim2.new(0.5, -180, 0.5, -270)
+panel.Size                   = UDim2.new(0, 360, 0, 670)
+panel.Position               = UDim2.new(0.5, -180, 0.5, -335)
 panel.BackgroundColor3       = Color3.fromRGB(18, 18, 28)
 panel.BackgroundTransparency = 0.08
 panel.BorderSizePixel        = 0
@@ -176,10 +179,76 @@ upgradeBtn.Active                 = true
 upgradeBtn.Parent                 = panel
 UiUtil.corner(upgradeBtn, 8)
 
+local yAfterUpgrade = yAfterQuest + 80 + 14
+
+local divider4 = Instance.new("Frame")
+divider4.Size             = UDim2.new(1, -32, 0, 1)
+divider4.Position         = UDim2.new(0, 16, 0, yAfterUpgrade)
+divider4.BackgroundColor3 = Color3.fromRGB(60, 70, 100)
+divider4.BorderSizePixel  = 0
+divider4.Parent           = panel
+
+local premiumLabel = Instance.new("TextLabel")
+premiumLabel.Size                   = UDim2.new(1, -32, 0, 22)
+premiumLabel.Position               = UDim2.new(0, 16, 0, yAfterUpgrade + 8)
+premiumLabel.BackgroundTransparency = 1
+premiumLabel.Text                   = "💎 Премиум"
+premiumLabel.TextColor3             = Color3.fromRGB(200, 160, 255)
+premiumLabel.TextScaled             = true
+premiumLabel.Font                   = Enum.Font.GothamBold
+premiumLabel.TextXAlignment         = Enum.TextXAlignment.Left
+premiumLabel.Parent                 = panel
+
+local vipBtn = Instance.new("TextButton")
+vipBtn.Size                   = UDim2.new(1, -32, 0, 40)
+vipBtn.Position               = UDim2.new(0, 16, 0, yAfterUpgrade + 36)
+vipBtn.BackgroundColor3       = Color3.fromRGB(60, 30, 80)
+vipBtn.BackgroundTransparency = 0.15
+vipBtn.BorderSizePixel        = 0
+vipBtn.Text                   = "👑 VIP +10% наград  R$"
+vipBtn.TextColor3             = Color3.fromRGB(200, 140, 255)
+vipBtn.TextScaled             = true
+vipBtn.Font                   = Enum.Font.GothamBold
+vipBtn.AutoButtonColor        = true
+vipBtn.Parent                 = panel
+UiUtil.corner(vipBtn, 8)
+
+local extraSlotBtn = Instance.new("TextButton")
+extraSlotBtn.Size                   = UDim2.new(1, -32, 0, 40)
+extraSlotBtn.Position               = UDim2.new(0, 16, 0, yAfterUpgrade + 84)
+extraSlotBtn.BackgroundColor3       = Color3.fromRGB(40, 30, 60)
+extraSlotBtn.BackgroundTransparency = 0.15
+extraSlotBtn.BorderSizePixel        = 0
+extraSlotBtn.Text                   = "🎒 +1 Слот монстра  R$"
+extraSlotBtn.TextColor3             = Color3.fromRGB(180, 160, 255)
+extraSlotBtn.TextScaled             = true
+extraSlotBtn.Font                   = Enum.Font.GothamBold
+extraSlotBtn.AutoButtonColor        = true
+extraSlotBtn.Parent                 = panel
+UiUtil.corner(extraSlotBtn, 8)
+
+local fastRecoveryBtn = Instance.new("TextButton")
+fastRecoveryBtn.Size                   = UDim2.new(1, -32, 0, 40)
+fastRecoveryBtn.Position               = UDim2.new(0, 16, 0, yAfterUpgrade + 132)
+fastRecoveryBtn.BackgroundColor3       = Color3.fromRGB(20, 50, 70)
+fastRecoveryBtn.BackgroundTransparency = 0.15
+fastRecoveryBtn.BorderSizePixel        = 0
+fastRecoveryBtn.Text                   = "⚡ Быстрый отдых (разово)  R$"
+fastRecoveryBtn.TextColor3             = Color3.fromRGB(120, 220, 255)
+fastRecoveryBtn.TextScaled             = true
+fastRecoveryBtn.Font                   = Enum.Font.GothamBold
+fastRecoveryBtn.AutoButtonColor        = true
+fastRecoveryBtn.Parent                 = panel
+UiUtil.corner(fastRecoveryBtn, 8)
+
 local showToast = UiUtil.makeToast(gui, UDim2.new(0.5, -200, 0, 72), 400)
 
 local nextQuestAt: number = 0
 local hasReinforcedTrap: boolean = false
+local currentCoins: number = 0
+local ownedMonsterTypes: { [string]: boolean } = {}
+local hasVip: boolean = false
+local hasExtraSlot: boolean = false
 local tickConn: RBXScriptConnection? = nil
 local tickElapsed = 0
 
@@ -203,6 +272,60 @@ local function updateQuestBtn()
 		questBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
 		questBtn.TextColor3       = Color3.fromRGB(120, 120, 140)
 		questBtn.Text             = "💼 Перезарядка... " .. left .. " сек"
+	end
+end
+
+local function updateMonsterButtons()
+	for i, def in MONSTER_DEFS do
+		local btn = monsterBtns[i]
+		if ownedMonsterTypes[def.type] then
+			btn.Active           = false
+			btn.AutoButtonColor  = false
+			btn.BackgroundColor3 = Color3.fromRGB(25, 35, 45)
+			btn.TextColor3       = Color3.fromRGB(70, 110, 150)
+			btn.Text             = def.label .. "  ✓ куплено"
+		elseif currentCoins < def.price then
+			btn.Active           = false
+			btn.AutoButtonColor  = false
+			btn.BackgroundColor3 = Color3.fromRGB(38, 25, 25)
+			btn.TextColor3       = Color3.fromRGB(150, 90, 90)
+			btn.Text             = def.label .. "  нужно 💰" .. def.price
+		else
+			btn.Active           = true
+			btn.AutoButtonColor  = true
+			btn.BackgroundColor3 = def.color
+			btn.TextColor3       = Color3.fromRGB(180, 220, 255)
+			btn.Text             = def.label .. " — " .. def.price .. "💰"
+		end
+	end
+end
+
+local function updatePremiumButtons()
+	if hasVip then
+		vipBtn.Active           = false
+		vipBtn.AutoButtonColor  = false
+		vipBtn.BackgroundColor3 = Color3.fromRGB(30, 50, 30)
+		vipBtn.TextColor3       = Color3.fromRGB(80, 200, 80)
+		vipBtn.Text             = "👑 VIP  ✓ активен"
+	else
+		vipBtn.Active           = true
+		vipBtn.AutoButtonColor  = true
+		vipBtn.BackgroundColor3 = Color3.fromRGB(60, 30, 80)
+		vipBtn.TextColor3       = Color3.fromRGB(200, 140, 255)
+		vipBtn.Text             = "👑 VIP +10% наград  R$"
+	end
+	if hasExtraSlot then
+		extraSlotBtn.Active           = false
+		extraSlotBtn.AutoButtonColor  = false
+		extraSlotBtn.BackgroundColor3 = Color3.fromRGB(30, 50, 30)
+		extraSlotBtn.TextColor3       = Color3.fromRGB(80, 200, 80)
+		extraSlotBtn.Text             = "🎒 +1 Слот монстра  ✓ активен"
+	else
+		extraSlotBtn.Active           = true
+		extraSlotBtn.AutoButtonColor  = true
+		extraSlotBtn.BackgroundColor3 = Color3.fromRGB(40, 30, 60)
+		extraSlotBtn.TextColor3       = Color3.fromRGB(180, 160, 255)
+		extraSlotBtn.Text             = "🎒 +1 Слот монстра  R$"
 	end
 end
 
@@ -244,6 +367,8 @@ local function setOpen(isOpen: boolean)
 	else
 		updateQuestBtn()
 		updateUpgradeBtn()
+		updateMonsterButtons()
+		updatePremiumButtons()
 		startTickIfNeeded()
 	end
 end
@@ -262,6 +387,13 @@ local function openShop(shopBaseId: any)
 	end
 	nextQuestAt       = data.nextQuestAt or 0
 	hasReinforcedTrap = (data.upgrades or {}).reinforcedTrap == true
+	currentCoins      = data.coins or 0
+	hasVip            = data.hasVip or false
+	hasExtraSlot      = data.hasExtraSlot or false
+	ownedMonsterTypes = {}
+	for _, m in (data.monsters or {}) do
+		ownedMonsterTypes[m.type or ""] = true
+	end
 	setOpen(true)
 end
 
@@ -297,6 +429,34 @@ upgradeBtn.MouseButton1Click:Connect(function()
 	end
 end)
 
+vipBtn.MouseButton1Click:Connect(function()
+	if not vipBtn.Active then return end
+	if Config.GAMEPASS_VIP == 0 then
+		showToast("💎 VIP: установите GAMEPASS_VIP в Config")
+		return
+	end
+	MarketplaceService:PromptGamePassPurchase(localPlayer, Config.GAMEPASS_VIP)
+end)
+
+extraSlotBtn.MouseButton1Click:Connect(function()
+	if not extraSlotBtn.Active then return end
+	if Config.GAMEPASS_EXTRA_SLOT == 0 then
+		showToast("💎 Слот: установите GAMEPASS_EXTRA_SLOT в Config")
+		return
+	end
+	MarketplaceService:PromptGamePassPurchase(localPlayer, Config.GAMEPASS_EXTRA_SLOT)
+end)
+
+fastRecoveryBtn.MouseButton1Click:Connect(function()
+	local result = fnSetPurchaseIntent:InvokeServer({ productKey = "fastRecovery" })
+	if not (result and result.ok) then
+		showToast((result and result.message) or "Нет уставших монстров")
+		return
+	end
+	if result.immediate then return end
+	MarketplaceService:PromptProductPurchase(localPlayer, result.productId)
+end)
+
 closeBtn.MouseButton1Click:Connect(function()
 	setOpen(false)
 end)
@@ -317,6 +477,17 @@ ProximityPromptService.PromptTriggered:Connect(function(prompt: ProximityPrompt,
 end)
 
 evMonsterUpdated.OnClientEvent:Connect(function(payload)
+	if payload.coins ~= nil then
+		currentCoins = payload.coins
+		if overlay.Visible then updateMonsterButtons() end
+	end
+	if payload.monsters ~= nil then
+		ownedMonsterTypes = {}
+		for _, m in payload.monsters do
+			ownedMonsterTypes[m.type or ""] = true
+		end
+		if overlay.Visible then updateMonsterButtons() end
+	end
 	if payload.nextQuestAt ~= nil then
 		nextQuestAt = payload.nextQuestAt
 		if overlay.Visible then
@@ -329,6 +500,14 @@ evMonsterUpdated.OnClientEvent:Connect(function(payload)
 		if overlay.Visible then
 			updateUpgradeBtn()
 		end
+	end
+	if payload.hasVip ~= nil then
+		hasVip = payload.hasVip
+		if overlay.Visible then updatePremiumButtons() end
+	end
+	if payload.hasExtraSlot ~= nil then
+		hasExtraSlot = payload.hasExtraSlot
+		if overlay.Visible then updatePremiumButtons() end
 	end
 end)
 

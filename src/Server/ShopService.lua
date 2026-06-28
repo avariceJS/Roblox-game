@@ -18,6 +18,10 @@ function ShopService.buyMonster(data, monsterType: string): { ok: boolean, messa
 	if data.coins < price then
 		return { ok = false, message = "Недостаточно монет (нужно " .. price .. ")" }
 	end
+	local maxSlots = Config.MAX_MONSTERS + (data.hasExtraSlot == true and 1 or 0)
+	if #data.monsters >= maxSlots then
+		return { ok = false, message = "Все слоты монстров заполнены" }
+	end
 	data.coins = data.coins - price
 	table.insert(data.monsters, {
 		id           = makeId(),

@@ -11,6 +11,20 @@ local _missionsFolder: Folder
 
 local slowed: { [Humanoid]: number } = {}
 
+local WALKER_COLORS = {
+	Slime      = Color3.fromRGB(80, 220, 80),
+	Gremlin    = Color3.fromRGB(255, 130, 40),
+	ShadowRat  = Color3.fromRGB(60, 60, 110),
+	Homunculus = Color3.fromRGB(100, 140, 255),
+}
+
+local PUDDLE_COLORS = {
+	Slime      = Color3.fromRGB(80, 200, 80),
+	Gremlin    = Color3.fromRGB(220, 110, 40),
+	ShadowRat  = Color3.fromRGB(60, 60, 110),
+	Homunculus = Color3.fromRGB(80, 120, 220),
+}
+
 local MissionService = {}
 
 local function getIdleMonster(data): any?
@@ -27,7 +41,7 @@ local function setMonsterIdle(monster: any)
 	monster.fatigueUntil = 0
 end
 
-local function scheduleFatigueRecovery(player: Player, monsterId: string, delaySec: number)
+local function scheduleFatigueRecovery(player: Player, monsterId: string, delaySec: number, displayName: string)
 	task.delay(delaySec, function()
 		local d = _pds.get(player)
 		if not d then
@@ -40,7 +54,7 @@ local function scheduleFatigueRecovery(player: Player, monsterId: string, delayS
 				if player.Parent then
 					_ev:FireClient(player, {
 						monsters = d.monsters,
-						toast = "Гуппи отдохнул — готов к делу! 🐸",
+						toast = displayName .. " отдохнул — готов к делу! 🐾",
 					})
 				end
 				break
@@ -68,7 +82,9 @@ function MissionService.syncPlayerMonsters(player: Player)
 				setMonsterIdle(m)
 				changed = true
 			else
-				scheduleFatigueRecovery(player, m.id, untilTs - now)
+				local def = MonsterDefs[m.type or "Slime"]
+				local name = (def and def.displayName) or "Монстр"
+				scheduleFatigueRecovery(player, m.id, untilTs - now, name)
 			end
 		end
 	end
@@ -78,7 +94,7 @@ function MissionService.syncPlayerMonsters(player: Player)
 	end
 end
 
-local function createWalker(from: Vector3): Part
+local function createWalker(from: Vector3, monsterType: string): Part
 	local p = Instance.new("Part")
 	p.Shape       = Enum.PartType.Ball
 	p.Size        = Vector3.new(1.4, 1.4, 1.4)
@@ -86,12 +102,13 @@ local function createWalker(from: Vector3): Part
 	p.Anchored    = true
 	p.CanCollide  = false
 	p.Material    = Enum.Material.Neon
-	p.Color       = Color3.fromRGB(80, 220, 80)
+	p.Color       = WALKER_COLORS[monsterType] or Color3.fromRGB(80, 220, 80)
 	p.Parent      = _missionsFolder
 	return p
 end
 
-local function createPuddle(pos: Vector3): (Part, RBXScriptConnection)
+local function createPuddle(pos: Vector3, monsterType: string): (Part, RBXScriptConnection)
+	local color = PUDDLE_COLORS[monsterType] or Color3.fromRGB(80, 200, 80)
 	local p = Instance.new("Part")
 	p.Name         = "StickyPuddle"
 	p.Shape        = Enum.PartType.Cylinder
@@ -100,9 +117,16 @@ local function createPuddle(pos: Vector3): (Part, RBXScriptConnection)
 	p.Anchored     = true
 	p.CanCollide   = false
 	p.Material     = Enum.Material.Neon
-	p.Color        = Color3.fromRGB(80, 200, 80)
+	p.Color        = color
 	p.Transparency = 0.4
 	p.Parent       = _missionsFolder
+
+	local emitter = Instance.new("ParticleEmitter")
+	emitter.Color    = ColorSequence.new(color)
+	emitter.Rate     = 6
+	emitter.Lifetime = NumberRange.new(0.6, 1.2)
+	emitter.Speed    = NumberRange.new(1.5, 3)
+	emitter.Parent   = p
 
 	local conn = p.Touched:Connect(function(hit)
 		local hum = hit.Parent:FindFirstChildWhichIsA("Humanoid")
@@ -143,7 +167,7 @@ local function runMission(player: Player, monsterId: string, targetId: number)
 	local srcPos = srcSpawn.Position + Vector3.new(0, srcSpawn.Size.Y * 0.5 + 3, 0)
 	local tgtPos = tgtPlatform.Position + Vector3.new(0, tgtPlatform.Size.Y * 0.5 + 3, 0)
 
-	local walker = createWalker(srcPos)
+	local walker = createWalker(srcPos, monsterType)
 	TweenService:Create(
 		walker,
 		TweenInfo.new(Config.TRAVEL_TIME, Enum.EasingStyle.Linear),
@@ -203,7 +227,7 @@ local function runMission(player: Player, monsterId: string, targetId: number)
 	end
 
 	local puddlePos = tgtPlatform.Position + Vector3.new(0, tgtPlatform.Size.Y * 0.5, 0)
-	local puddle, conn = createPuddle(puddlePos)
+	local puddle, conn = createPuddle(puddlePos, monsterType)
 	task.delay(Config.PUDDLE_DURATION, function()
 		conn:Disconnect()
 		if puddle.Parent then puddle:Destroy() end
@@ -212,7 +236,9 @@ local function runMission(player: Player, monsterId: string, targetId: number)
 	local d = _pds.get(player)
 	if not d then return end
 
-	d.coins = d.coins + Config.DISPATCH_COINS
+	local vipBonus    = (d.hasVip == true) and Config.VIP_BONUS or 0
+	local earnedCoins = math.floor(Config.DISPATCH_COINS * (1 + vipBonus))
+	d.coins = d.coins + earnedCoins
 	d.chaos  = (d.chaos or 0) + Config.DISPATCH_CHAOS
 
 	local levelUpMsg: string? = nil
@@ -238,7 +264,7 @@ local function runMission(player: Player, monsterId: string, targetId: number)
 			monsters = d.monsters,
 			coins    = d.coins,
 			chaos    = d.chaos,
-			toast    = monsterDisplayName .. " пакостит! +💰" .. Config.DISPATCH_COINS .. "  +🌀" .. Config.DISPATCH_CHAOS,
+			toast    = monsterDisplayName .. " пакостит! +💰" .. earnedCoins .. "  +🌀" .. Config.DISPATCH_CHAOS .. (vipBonus > 0 and " 💎" or ""),
 		})
 		if levelUpMsg then
 			task.delay(1.5, function()
@@ -258,7 +284,7 @@ local function runMission(player: Player, monsterId: string, targetId: number)
 		end
 	end
 
-	scheduleFatigueRecovery(player, monsterId, Config.FATIGUE_TIME)
+	scheduleFatigueRecovery(player, monsterId, Config.FATIGUE_TIME, monsterDisplayName)
 end
 
 function MissionService.init(playerDataService, evMonsterUpdated, baseService)
@@ -315,9 +341,11 @@ function MissionService.dispatch(player: Player, targetBaseId: number, requested
 			return { ok = false, message = "Монстр не найден" }
 		end
 		if monster.state ~= "Idle" then
+			local def = MonsterDefs[monster.type or "Slime"]
+			local name = (def and def.displayName) or "Монстр"
 			local stateMsg = if monster.state == "Fatigued"
-				then "Гуппи отдыхает, подожди 💤"
-				else "Гуппи уже на задании 🐸"
+				then name .. " отдыхает, подожди 💤"
+				else name .. " уже на задании"
 			return { ok = false, message = stateMsg }
 		end
 	else
@@ -325,9 +353,11 @@ function MissionService.dispatch(player: Player, targetBaseId: number, requested
 		if not monster then
 			local first = data.monsters[1]
 			if first then
+				local def = MonsterDefs[first.type or "Slime"]
+				local name = (def and def.displayName) or "Монстр"
 				local stateMsg = if first.state == "Fatigued"
-					then "Гуппи отдыхает, подожди 💤"
-					else "Гуппи уже на задании 🐸"
+					then name .. " отдыхает, подожди 💤"
+					else name .. " уже на задании"
 				return { ok = false, message = stateMsg }
 			end
 			return { ok = false, message = "Нет монстров" }
