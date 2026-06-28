@@ -178,11 +178,12 @@ local function runMission(player: Player, monsterId: string, targetId: number)
 
 				if not defData.jail then defData.jail = {} end
 				table.insert(defData.jail, {
-					monsterId    = monsterId,
-					monsterType  = monsterType,
-					monsterName  = monsterDisplayName,
-					ownerName    = player.Name,
-					ownerUserId  = player.UserId,
+					monsterId         = monsterId,
+					monsterType       = monsterType,
+					monsterName       = monsterDisplayName,
+					ownerName         = player.Name,
+					ownerUserId       = player.UserId,
+					subjugateAttempts = 0,
 				})
 				_pds.save(defender)
 
@@ -214,10 +215,18 @@ local function runMission(player: Player, monsterId: string, targetId: number)
 	d.coins = d.coins + Config.DISPATCH_COINS
 	d.chaos  = (d.chaos or 0) + Config.DISPATCH_CHAOS
 
+	local levelUpMsg: string? = nil
 	for _, m in d.monsters do
 		if m.id == monsterId then
 			m.state        = "Fatigued"
 			m.fatigueUntil = os.time() + Config.FATIGUE_TIME
+			m.xp = (m.xp or 0) + Config.DISPATCH_XP
+			local xpNeeded = Config.XP_PER_LEVEL * (m.level or 1)
+			if m.xp >= xpNeeded then
+				m.xp    = m.xp - xpNeeded
+				m.level = (m.level or 1) + 1
+				levelUpMsg = "🎉 " .. monsterDisplayName .. " — уровень " .. m.level .. "!"
+			end
 			break
 		end
 	end
@@ -229,8 +238,15 @@ local function runMission(player: Player, monsterId: string, targetId: number)
 			monsters = d.monsters,
 			coins    = d.coins,
 			chaos    = d.chaos,
-			toast    = "Гуппи пакостит! +💰" .. Config.DISPATCH_COINS .. "  +🌀" .. Config.DISPATCH_CHAOS,
+			toast    = monsterDisplayName .. " пакостит! +💰" .. Config.DISPATCH_COINS .. "  +🌀" .. Config.DISPATCH_CHAOS,
 		})
+		if levelUpMsg then
+			task.delay(1.5, function()
+				if player.Parent then
+					_ev:FireClient(player, { toast = levelUpMsg })
+				end
+			end)
+		end
 	end
 
 	if targetId > 0 and _bs then

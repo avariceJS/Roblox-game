@@ -13,13 +13,19 @@ local NpcService      = require(Server.NpcService)
 local MonsterService  = require(Server.MonsterService)
 local LabService      = require(Server.LabService)
 local MissionService  = require(Server.MissionService)
-local TrapService     = require(Server.TrapService)
-local RansomService   = require(Server.RansomService)
-local ShopService     = require(Server.ShopService)
-local BaseUtil        = require(Shared.BaseUtil)
+local TrapService      = require(Server.TrapService)
+local RansomService    = require(Server.RansomService)
+local ShopService      = require(Server.ShopService)
+local ShopMapService   = require(Server.ShopMapService)
+local JailMapService   = require(Server.JailMapService)
+local JailBreakService    = require(Server.JailBreakService)
+local SubjugationService  = require(Server.SubjugationService)
+local BaseUtil            = require(Shared.BaseUtil)
 
 BaseMapService.ensure()
 NpcService.init()
+ShopMapService.init()
+JailMapService.init()
 
 local function ensureRemote(name: string, class: string): Instance
 	local existing = Remotes:FindFirstChild(name)
@@ -42,11 +48,16 @@ local fnDispatch       = ensureRemote("DispatchMonster","RemoteFunction") :: Rem
 local fnSetTrap        = ensureRemote("SetTrap",        "RemoteFunction") :: RemoteFunction
 local fnSetRansom      = ensureRemote("SetRansom",      "RemoteFunction") :: RemoteFunction
 local fnPayRansom      = ensureRemote("PayRansom",      "RemoteFunction") :: RemoteFunction
-local fnBuyMonster     = ensureRemote("BuyMonster",     "RemoteFunction") :: RemoteFunction
-local fnDoQuest        = ensureRemote("DoQuest",        "RemoteFunction") :: RemoteFunction
+local fnBuyMonster        = ensureRemote("BuyMonster",        "RemoteFunction") :: RemoteFunction
+local fnDoQuest           = ensureRemote("DoQuest",           "RemoteFunction") :: RemoteFunction
+local fnAttemptJailBreak  = ensureRemote("AttemptJailBreak",   "RemoteFunction") :: RemoteFunction
+local fnAttemptSubjugate  = ensureRemote("AttemptSubjugate",   "RemoteFunction") :: RemoteFunction
+local fnBuyUpgrade        = ensureRemote("BuyUpgrade",          "RemoteFunction") :: RemoteFunction
 
 LabService.init()
 MissionService.init(PlayerDataService, evMonsterUpdated, BaseService)
+JailBreakService.init(evMonsterUpdated)
+SubjugationService.init(evMonsterUpdated)
 
 fnSetTrap.OnServerInvoke = function(player: Player, payload: { active: boolean })
 	local data = PlayerDataService.get(player)
@@ -171,6 +182,52 @@ fnDoQuest.OnServerInvoke = function(player: Player)
 	return { ok = true }
 end
 
+fnAttemptSubjugate.OnServerInvoke = function(player: Player, payload: { monsterId: string? })
+	if not payload or not payload.monsterId then
+		return { ok = false, message = "Неверные данные" }
+	end
+	return SubjugationService.attemptSubjugate(player, payload.monsterId)
+end
+
+fnBuyUpgrade.OnServerInvoke = function(player: Player, payload: { upgradeKey: string? })
+	local data = PlayerDataService.get(player)
+	if not data then
+		return { ok = false, message = "Данные не загружены" }
+	end
+	local key = payload and payload.upgradeKey
+	if not key then
+		return { ok = false, message = "Неверный апгрейд" }
+	end
+	local price = Config.UPGRADE_PRICES[key]
+	if not price then
+		return { ok = false, message = "Апгрейд не найден" }
+	end
+	if (data.baseUpgrades or {})[key] then
+		return { ok = false, message = "Уже куплен" }
+	end
+	if data.coins < price then
+		return { ok = false, message = "Недостаточно монет" }
+	end
+	data.coins = data.coins - price
+	data.baseUpgrades = data.baseUpgrades or {}
+	data.baseUpgrades[key] = true
+	PlayerDataService.save(player)
+	evMonsterUpdated:FireClient(player, {
+		coins    = data.coins,
+		upgrades = data.baseUpgrades,
+		toast    = "Куплено: Усиленная ловушка! 🔩",
+	})
+	return { ok = true }
+end
+
+fnAttemptJailBreak.OnServerInvoke = function(player: Player, payload: { targetBaseId: number? })
+	local targetBaseId = payload and payload.targetBaseId
+	if not targetBaseId then
+		return { ok = false, message = "Неверная цель" }
+	end
+	return JailBreakService.attemptBreak(player, targetBaseId)
+end
+
 fnDispatch.OnServerInvoke = function(player: Player, payload: { targetBaseId: number?, monsterId: string? })
 	local rawId = payload and payload.targetBaseId
 	if rawId == nil then
@@ -222,6 +279,7 @@ fnGetData.OnServerInvoke = function(player: Player)
 		jail        = data.jail or {},
 		hasCage     = TrapService.hasCage(data),
 		nextQuestAt = data.questCooldownUntil or 0,
+		upgrades    = data.baseUpgrades or {},
 	}
 end
 

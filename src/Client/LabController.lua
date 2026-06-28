@@ -1,6 +1,6 @@
-local Players = game:GetService("Players")
+local Players                = game:GetService("Players")
 local ProximityPromptService = game:GetService("ProximityPromptService")
-local RunService = game:GetService("RunService")
+local RunService             = game:GetService("RunService")
 
 local UiUtil         = require(script.Parent.UiUtil)
 local MonsterDisplay = require(game.ReplicatedStorage.src.Shared.MonsterDisplay)
@@ -9,14 +9,14 @@ local BaseUtil       = require(game.ReplicatedStorage.src.Shared.BaseUtil)
 local localPlayer = Players.LocalPlayer
 local src     = game.ReplicatedStorage:WaitForChild("src")
 local Remotes = src:WaitForChild("Remotes")
-local fnGetData        = Remotes:WaitForChild("GetPlayerData")   :: RemoteFunction
-local fnDispatch       = Remotes:WaitForChild("DispatchMonster") :: RemoteFunction
-local fnSetTrap        = Remotes:WaitForChild("SetTrap")         :: RemoteFunction
-local fnSetRansom      = Remotes:WaitForChild("SetRansom")       :: RemoteFunction
-local fnPayRansom      = Remotes:WaitForChild("PayRansom")       :: RemoteFunction
-local fnBuyMonster     = Remotes:WaitForChild("BuyMonster")      :: RemoteFunction
-local fnDoQuest        = Remotes:WaitForChild("DoQuest")         :: RemoteFunction
-local evMonsterUpdated = Remotes:WaitForChild("MonsterUpdated")  :: RemoteEvent
+local fnGetData          = Remotes:WaitForChild("GetPlayerData")   :: RemoteFunction
+local fnDispatch         = Remotes:WaitForChild("DispatchMonster") :: RemoteFunction
+local fnSetTrap          = Remotes:WaitForChild("SetTrap")         :: RemoteFunction
+local fnSetRansom        = Remotes:WaitForChild("SetRansom")       :: RemoteFunction
+local fnPayRansom        = Remotes:WaitForChild("PayRansom")       :: RemoteFunction
+local fnAttemptJailBreak  = Remotes:WaitForChild("AttemptJailBreak")  :: RemoteFunction
+local fnAttemptSubjugate  = Remotes:WaitForChild("AttemptSubjugate") :: RemoteFunction
+local evMonsterUpdated    = Remotes:WaitForChild("MonsterUpdated")   :: RemoteEvent
 
 local gui = Instance.new("ScreenGui")
 gui.Name           = "LabHUD"
@@ -34,8 +34,8 @@ overlay.Visible                = false
 overlay.Parent                 = gui
 
 local panel = Instance.new("Frame")
-panel.Size                   = UDim2.new(0, 360, 0, 600)
-panel.Position               = UDim2.new(0.5, -180, 0.5, -300)
+panel.Size                   = UDim2.new(0, 360, 0, 540)
+panel.Position               = UDim2.new(0.5, -180, 0.5, -270)
 panel.BackgroundColor3       = Color3.fromRGB(18, 18, 28)
 panel.BackgroundTransparency = 0.08
 panel.BorderSizePixel        = 0
@@ -220,52 +220,6 @@ for i = 1, MAX_JAIL_SLOTS do
 	jailSlots[i] = btn
 end
 
-local shopSection = Instance.new("Frame")
-shopSection.Size                   = UDim2.new(1, -32, 0, 64)
-shopSection.Position               = UDim2.new(0, 16, 0, 412)
-shopSection.BackgroundTransparency = 1
-shopSection.BorderSizePixel        = 0
-shopSection.Parent                 = panel
-
-local shopTitle = Instance.new("TextLabel")
-shopTitle.Size                   = UDim2.new(1, 0, 0, 18)
-shopTitle.BackgroundTransparency = 1
-shopTitle.Text                   = "🏪 Магазин монстров"
-shopTitle.TextColor3             = Color3.fromRGB(180, 210, 255)
-shopTitle.TextScaled             = true
-shopTitle.Font                   = Enum.Font.GothamBold
-shopTitle.TextXAlignment         = Enum.TextXAlignment.Left
-shopTitle.Parent                 = shopSection
-
-local buySlimeBtn = Instance.new("TextButton")
-buySlimeBtn.Size                   = UDim2.new(1, 0, 0, 40)
-buySlimeBtn.Position               = UDim2.new(0, 0, 0, 22)
-buySlimeBtn.BackgroundColor3       = Color3.fromRGB(30, 60, 90)
-buySlimeBtn.BackgroundTransparency = 0.15
-buySlimeBtn.BorderSizePixel        = 0
-buySlimeBtn.Text                   = "🐸 Гуппи (Слизень) — 50💰"
-buySlimeBtn.TextColor3             = Color3.fromRGB(180, 220, 255)
-buySlimeBtn.TextScaled             = true
-buySlimeBtn.Font                   = Enum.Font.GothamBold
-buySlimeBtn.AutoButtonColor        = true
-buySlimeBtn.Parent                 = shopSection
-UiUtil.corner(buySlimeBtn, 8)
-
-local questBtn = Instance.new("TextButton")
-questBtn.Size                   = UDim2.new(1, -32, 0, 44)
-questBtn.Position               = UDim2.new(0, 16, 0, 484)
-questBtn.BackgroundColor3       = Color3.fromRGB(60, 40, 20)
-questBtn.BackgroundTransparency = 0.15
-questBtn.BorderSizePixel        = 0
-questBtn.Text                   = "💼 Мелкая работа  +25💰"
-questBtn.TextColor3             = Color3.fromRGB(255, 200, 80)
-questBtn.TextScaled             = true
-questBtn.Font                   = Enum.Font.GothamBold
-questBtn.AutoButtonColor        = true
-questBtn.Active                 = true
-questBtn.Parent                 = panel
-UiUtil.corner(questBtn, 10)
-
 local picker = Instance.new("Frame")
 picker.Size                   = UDim2.new(1, -32, 0, 460)
 picker.Position               = UDim2.new(0, 16, 0, 66)
@@ -334,8 +288,8 @@ ransomPanel.Parent                 = panel
 UiUtil.corner(ransomPanel, 14)
 
 local ransomCard = Instance.new("Frame")
-ransomCard.Size                   = UDim2.new(0.82, 0, 0, 250)
-ransomCard.Position               = UDim2.new(0.09, 0, 0.5, -125)
+ransomCard.Size                   = UDim2.new(0.82, 0, 0, 308)
+ransomCard.Position               = UDim2.new(0.09, 0, 0.5, -154)
 ransomCard.BackgroundColor3       = Color3.fromRGB(28, 16, 10)
 ransomCard.BackgroundTransparency = 0.05
 ransomCard.BorderSizePixel        = 0
@@ -388,9 +342,24 @@ for i, price in RANSOM_PRESETS do
 	ransomPriceBtns[i] = btn
 end
 
+local subjugateBtn = Instance.new("TextButton")
+subjugateBtn.Size                   = UDim2.new(1, -16, 0, 44)
+subjugateBtn.Position               = UDim2.new(0, 8, 0, 200)
+subjugateBtn.BackgroundColor3       = Color3.fromRGB(60, 20, 80)
+subjugateBtn.BackgroundTransparency = 0.15
+subjugateBtn.BorderSizePixel        = 0
+subjugateBtn.Text                   = "😈 Подчинить (50%)"
+subjugateBtn.TextColor3             = Color3.fromRGB(200, 140, 255)
+subjugateBtn.TextScaled             = true
+subjugateBtn.Font                   = Enum.Font.GothamBold
+subjugateBtn.AutoButtonColor        = true
+subjugateBtn.ZIndex                 = 10
+subjugateBtn.Parent                 = ransomCard
+UiUtil.corner(subjugateBtn, 8)
+
 local ransomCancel = Instance.new("TextButton")
 ransomCancel.Size                   = UDim2.new(1, -16, 0, 36)
-ransomCancel.Position               = UDim2.new(0, 8, 0, 200)
+ransomCancel.Position               = UDim2.new(0, 8, 0, 256)
 ransomCancel.BackgroundColor3       = Color3.fromRGB(50, 30, 30)
 ransomCancel.BackgroundTransparency = 0.2
 ransomCancel.BorderSizePixel        = 0
@@ -405,13 +374,12 @@ UiUtil.corner(ransomCancel, 8)
 
 local showToast = UiUtil.makeToast(gui, UDim2.new(0.5, -200, 0, 72), 400)
 
-local playerBaseId:       number?  = nil
-local lastMonsters:      { any }?  = nil
-local lastTargets:        { any }  = {}
-local selectedMonsterId:  string?  = nil
-local hasCage:  boolean = false
-local jailData: { any } = {}
-local nextQuestAt: number = 0
+local playerBaseId:      number? = nil
+local lastMonsters:      { any }? = nil
+local lastTargets:       { any }  = {}
+local selectedMonsterId: string?  = nil
+local hasCage:    boolean = false
+local jailData:   { any } = {}
 local selectedJailIdx: number = 0
 local tickConn: RBXScriptConnection? = nil
 local tickElapsed = 0
@@ -424,10 +392,7 @@ local monsterLabels = {
 }
 
 local function stopTick()
-	if tickConn then
-		tickConn:Disconnect()
-		tickConn = nil
-	end
+	if tickConn then tickConn:Disconnect(); tickConn = nil end
 	tickElapsed = 0
 end
 
@@ -437,30 +402,6 @@ local function hasFatiguedMonster(monsters: { any }?): boolean
 		if m.state == "Fatigued" then return true end
 	end
 	return false
-end
-
-local function needsTick(): boolean
-	if hasFatiguedMonster(lastMonsters) then return true end
-	if nextQuestAt > 0 and os.time() < nextQuestAt then return true end
-	return false
-end
-
-local function updateQuestBtn()
-	local now = os.time()
-	if nextQuestAt <= now then
-		questBtn.Active           = true
-		questBtn.AutoButtonColor  = true
-		questBtn.BackgroundColor3 = Color3.fromRGB(60, 40, 20)
-		questBtn.TextColor3       = Color3.fromRGB(255, 200, 80)
-		questBtn.Text             = "💼 Мелкая работа  +25💰"
-	else
-		local left = nextQuestAt - now
-		questBtn.Active           = false
-		questBtn.AutoButtonColor  = false
-		questBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-		questBtn.TextColor3       = Color3.fromRGB(120, 120, 140)
-		questBtn.Text             = "💼 Перезарядка... " .. left .. " сек"
-	end
 end
 
 local function fatigueButtonSuffix(monster: any): string
@@ -542,16 +483,14 @@ end
 
 local function refreshTimedLabels()
 	local monster = MonsterDisplay.first(lastMonsters)
-	if monster then
-		MonsterDisplay.fill(monsterLabels, monster)
-	end
+	if monster then MonsterDisplay.fill(monsterLabels, monster) end
 	renderDispatch()
-	updateQuestBtn()
 end
 
 local function startTickIfNeeded()
 	stopTick()
-	if not overlay.Visible or not needsTick() then return end
+	if not overlay.Visible then return end
+	if not hasFatiguedMonster(lastMonsters) then return end
 	tickElapsed = 0
 	tickConn = RunService.Heartbeat:Connect(function(dt)
 		if not overlay.Visible then stopTick(); return end
@@ -559,7 +498,7 @@ local function startTickIfNeeded()
 		if tickElapsed < 1 then return end
 		tickElapsed = 0
 		refreshTimedLabels()
-		if not needsTick() then stopTick() end
+		if not hasFatiguedMonster(lastMonsters) then stopTick() end
 	end)
 end
 
@@ -619,8 +558,6 @@ local function setPickerVisible(visible: boolean)
 	picker.Visible         = visible
 	dispatchBtn.Visible    = not visible
 	defenseSection.Visible = not visible
-	shopSection.Visible    = not visible
-	questBtn.Visible       = not visible
 	if visible then
 		slot.Visible       = false
 		emptyLabel.Visible = false
@@ -649,16 +586,12 @@ local function setOpen(isOpen: boolean)
 		picker.Visible         = false
 		dispatchBtn.Visible    = true
 		defenseSection.Visible = true
-		shopSection.Visible    = true
-		questBtn.Visible       = true
 		ransomPanel.Visible    = false
 		selectedMonsterId      = nil
 		selectedJailIdx        = 0
 		stopTick()
 	else
 		defenseSection.Visible = true
-		shopSection.Visible    = true
-		questBtn.Visible       = true
 		startTickIfNeeded()
 	end
 end
@@ -687,7 +620,7 @@ local function openPicker()
 			btn.BackgroundTransparency = 0.1
 			btn.TextColor3             = Color3.fromRGB(200, 220, 255)
 		else
-			btn.Visible        = false
+			btn.Visible           = false
 			pickerBtnIds[slotIdx] = -1
 		end
 	end
@@ -701,7 +634,6 @@ for slotIdx = 1, MAX_PICKER_BTNS do
 		local tgtId = pickerBtnIds[slotIdx]
 		if tgtId == -1 then return end
 		setOpen(false)
-
 		local result = fnDispatch:InvokeServer({ targetBaseId = tgtId, monsterId = selectedMonsterId })
 		if result and result.ok then
 			showToast("Гуппи отправился! 🐸")
@@ -738,6 +670,19 @@ for i, price in RANSOM_PRESETS do
 	end)
 end
 
+subjugateBtn.MouseButton1Click:Connect(function()
+	if selectedJailIdx == 0 then return end
+	local entry = jailData[selectedJailIdx]
+	if not entry then return end
+	closeRansomPanel()
+	local result = fnAttemptSubjugate:InvokeServer({ monsterId = entry.monsterId })
+	if result and result.ok then
+		showToast("Монстр подчинён! 😈")
+	else
+		showToast((result and result.message) or "Провал подчинения")
+	end
+end)
+
 ransomCancel.MouseButton1Click:Connect(closeRansomPanel)
 
 cageBtn.MouseButton1Click:Connect(function()
@@ -759,23 +704,6 @@ dispatchBtn.MouseButton1Click:Connect(function()
 		end
 	else
 		openPicker()
-	end
-end)
-
-buySlimeBtn.MouseButton1Click:Connect(function()
-	local result = fnBuyMonster:InvokeServer({ monsterType = "Slime" })
-	if result and result.ok then
-		showToast("Купил нового Гуппи! 🐸")
-	else
-		showToast((result and result.message) or "Ошибка покупки")
-	end
-end)
-
-questBtn.MouseButton1Click:Connect(function()
-	if not questBtn.Active then return end
-	local result = fnDoQuest:InvokeServer()
-	if not (result and result.ok) then
-		showToast((result and result.message) or "Ошибка квеста")
 	end
 end)
 
@@ -808,20 +736,27 @@ local function openLab(labBaseId: any)
 
 	playerBaseId      = myId
 	lastTargets       = data.targets or {}
-	nextQuestAt       = data.nextQuestAt or 0
 	selectedMonsterId = nil
 	updateCageButton(data.hasCage == true)
 	renderJail(data.jail)
-	updateQuestBtn()
 	render(data.monsters)
 	setOpen(true)
 end
 
 ProximityPromptService.PromptTriggered:Connect(function(prompt: ProximityPrompt, player: Player)
-	if player ~= localPlayer or prompt.Name ~= "LabPrompt" then return end
+	if player ~= localPlayer then return end
 	local model = prompt:FindFirstAncestorWhichIsA("Model")
-	if model then
+	if not model then return end
+	if prompt.Name == "LabPrompt" then
 		openLab(model:GetAttribute("BaseId"))
+	elseif prompt.Name == "JailPrompt" then
+		local targetBaseId = BaseUtil.normalizeId(model:GetAttribute("BaseId"))
+		local result = fnAttemptJailBreak:InvokeServer({ targetBaseId = targetBaseId })
+		if result and result.ok then
+			showToast("Монстр освобождён! 🔓")
+		else
+			showToast((result and result.message) or "Ошибка влома")
+		end
 	end
 end)
 
@@ -837,11 +772,6 @@ evMonsterUpdated.OnClientEvent:Connect(function(payload)
 		if overlay.Visible and not picker.Visible then
 			render(payload.monsters)
 		end
-	end
-	if payload.nextQuestAt ~= nil then
-		nextQuestAt = payload.nextQuestAt
-		updateQuestBtn()
-		startTickIfNeeded()
 	end
 end)
 

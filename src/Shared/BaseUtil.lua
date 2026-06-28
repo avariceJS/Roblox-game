@@ -41,6 +41,22 @@ function BaseUtil.getLabFloorPos(baseId: number): Vector3?
 	return Vector3.new(spawn.Position.X, topY, spawn.Position.Z) + side
 end
 
+function BaseUtil.getShopFloorPos(baseId: number): Vector3?
+	local spawn = BaseUtil.getSpawn(baseId)
+	if not spawn then return nil end
+	local topY = spawn.Position.Y + spawn.Size.Y * 0.5
+	local side = spawn.CFrame.RightVector * (spawn.Size.X * 0.5 + 3.5)
+	return Vector3.new(spawn.Position.X, topY, spawn.Position.Z) - side
+end
+
+function BaseUtil.getJailFloorPos(baseId: number): Vector3?
+	local spawn = BaseUtil.getSpawn(baseId)
+	if not spawn then return nil end
+	local topY = spawn.Position.Y + spawn.Size.Y * 0.5
+	local front = spawn.CFrame.LookVector * (spawn.Size.Z * 0.5 + 3.5)
+	return Vector3.new(spawn.Position.X, topY, spawn.Position.Z) + front
+end
+
 function BaseUtil.getNpcHome(): BasePart?
 	local folder = workspace:FindFirstChild("NpcHomes")
 	return folder and folder:FindFirstChild("House") :: BasePart?

@@ -53,7 +53,7 @@ function MonsterDisplay.fill(labels: {
 	local def = MonsterDefs[monster.type] or MonsterDefs.Slime
 	labels.icon.Text = def.icon
 	labels.name.Text = def.displayName
-	labels.rarity.Text = def.rarityDisplay
+	labels.rarity.Text = def.rarityDisplay .. "  |  Ур." .. (monster.level or 1)
 	labels.state.Text = MonsterDisplay.stateText(monster)
 	labels.state.TextColor3 = STATE_COLOR[monster.state] or Color3.new(1, 1, 1)
 	return true

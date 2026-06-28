@@ -16,6 +16,7 @@ local function defaultData()
 		traps = {},
 		jail = {},
 		questCooldownUntil = 0,
+		baseUpgrades = {},
 	}
 end
 
@@ -31,6 +32,7 @@ function PlayerDataService.load(player: Player)
 		data.jail = data.jail or {}
 		data.chaos = data.chaos or 0
 		data.questCooldownUntil = data.questCooldownUntil or 0
+		data.baseUpgrades = data.baseUpgrades or {}
 		data.baseId = BaseUtil.normalizeId(data.baseId)
 	else
 		if not ok then
@@ -90,6 +92,7 @@ function PlayerDataService.modifyByUserId(userId: number, fn: (data: any) -> ())
 		result.traps              = result.traps or {}
 		result.jail               = result.jail or {}
 		result.questCooldownUntil = result.questCooldownUntil or 0
+		result.baseUpgrades = result.baseUpgrades or {}
 		fn(result)
 		pcall(store.SetAsync, store, key, result)
 	end

@@ -6,13 +6,13 @@
 
 ## Сейчас
 
-|                   |                                                                               |
-| ----------------- | ----------------------------------------------------------------------------- |
-| **Фаза**          | Phase 6 ✅ — Economy & Jail Ransom (логика работает)                          |
-| **Следующий шаг** | **Phase 7** — сначала **отдельный магазин** (UI), потом влом / jail break     |
-| **UX-долг**       | Магазин + квест сейчас **внутри лаборатории** — вынести в отдельное меню       |
-| **Блокеры**       | нет                                                                           |
-| **Workflow**      | `rojo serve` → Accept → **Stop → Play Solo** / **2 Players**                  |
+|                   |                                                                 |
+| ----------------- | --------------------------------------------------------------- |
+| **Фаза**          | Phase 8 ✅ — Подчинение, XP/уровни, новые монстры, Base Upgrade |
+| **Следующий шаг** | **Phase 9** — визуал монстров, звуки, VFX, балансировка         |
+| **UX-долг**       | нет                                                             |
+| **Блокеры**       | нет                                                             |
+| **Workflow**      | `rojo serve` → Accept → **Stop → Play Solo** / **2 Players**    |
 
 ### Дизайн после поимки (зафиксировано)
 
@@ -22,37 +22,40 @@
 
 ```
 Продолжаем Rent-a-Monster. Прочитай docs/HANDOFF.md, docs/PROJECT.md, docs/ROADMAP.md, docs/GAME.md.
-Phase 7 — отдельный магазин монстров (вынести из LabController) + Jail Break. Дай intent-промпт для Claude Code.
+Phase 9 — визуал монстров, звуки, VFX, балансировка. Дай intent-промпт для Claude Code.
 ```
 
 ---
 
-## Что работает (Play Solo / 2 Players, 2026-06-24)
+## Что работает (Play Solo / 2 Players, 2026-06-28)
 
 - **6 баз** — сервер создаёт `Workspace.Bases` из `Config.BASE_LAYOUT` (`BaseMapService`)
 - **NPC-дом** — `Workspace.NpcHomes/House`, коричневый Part, позиция из `Config.NPC_HOME_POSITION`
 - **HUD** — 🪙 монеты + 🌀 chaos + 🏠 #N (`HudController`)
 - **Подсветка своей базы** — зелёный диск + Highlight + «▼ ВАШ ОСОБНЯК #N» (`BaseMarkerController`)
-- **Лаборатория** — [E] у капсулы на **своей** базе → UI с Гуппи; чужая база → toast (`LabController`)
+- **Лаборатория** — [E] у капсулы на **своей** базе → UI с монстрами + клетка + выкуп + подчинение; чужая база → toast (`LabController`)
 - **Стартовый монстр** — Slime/Гуппи при первом join (`MonsterService`)
-- **Отправка монстра** — пикер целей (NPC-дом + живые игроки) → walker-шар → лужа → монеты+chaos → Fatigued → Idle
-- **Защитник** — toast-уведомление при атаке; ловушка Cage в лаборатории
-- **Клетка** — при активной Cage + атаке: монстр → Captured, запись в `data.jail` защитника
-- **Toast обоим** — атакующий «Твой Гуппи пойман! ⛓️», защитник «Поймал Гуппи! 🔒»
-- **Workspace** организован: `Workspace.Bases`, `Workspace.Labs`, `Workspace.Missions`, `Workspace.NpcHomes`
-- **Выкуп** — захватчик кликает слот клетки → задаёт цену (25/50/100/200); владелец видит «Выкупить 💰 N» → платит → монстр Idle
-- **Магазин / квест** — пока **в лаборатории** (🏪 Гуппи 50💰, 💼 мелкая работа +25💰) — **вынести в отдельное меню (Phase 7)**
+- **Отправка монстра** — пикер целей → walker-шар → лужа → монеты+chaos+XP → Fatigued → Idle; при level up — toast через 1.5 сек
+- **XP и уровни** — `DISPATCH_XP=10`, `XP_PER_LEVEL=30`; уровень отображается в карточке монстра «Обычный | Ур.N»
+- **4 монстра** — Slime 🐸 / Gremlin 👺 / ShadowRat 🐀 / Homunculus 🧿 в MonsterDefs + ShopController
+- **Защитник** — toast при атаке; ловушка Cage в лаборатории
+- **Клетка** — при Cage + атаке: монстр → Captured, запись в `data.jail` с `subjugateAttempts=0`
+- **Выкуп** — задаёт цену (25/50/100/200); владелец → платит → монстр Idle
+- **Подчинение** — кнопка «Подчинить» в панели клетки; 50% шанс, 3 попытки; успех → монстр у захватчика; провал × 3 → авто-компенсация 30💰
+- **Магазин** — `Workspace.Shops/Shop_BaseN`; покупка 4 монстров + квест +25💰 + «Усиленная ловушка» 150💰
+- **Влом** — `Workspace.Jails/Jail_BaseN`; если Cage → alert; если `reinforcedTrap` → 40% поймать Idle монстр вломщика; иначе монстр Idle
+- **Base Upgrade** — `baseUpgrades.reinforcedTrap` в DataStore; куплено в ShopController; влияет в JailBreakService
 - **Studio-only:** `Config.STUDIO_WALK_SPEED = 64` — быстрая ходьба в Play Solo для тестов
 
 ---
 
 ## Архитектура (не ломать без причины)
 
-### Remotes (9)
+### Remotes (12)
 
-`GetPlayerData` (RF) · `BaseAssigned` (RE) · `MonsterUpdated` (RE) · `DispatchMonster` (RF) · `SetTrap` (RF) · `SetRansom` (RF) · `PayRansom` (RF) · `BuyMonster` (RF) · `DoQuest` (RF)
+`GetPlayerData` (RF) · `BaseAssigned` (RE) · `MonsterUpdated` (RE) · `DispatchMonster` (RF) · `SetTrap` (RF) · `SetRansom` (RF) · `PayRansom` (RF) · `BuyMonster` (RF) · `DoQuest` (RF) · `AttemptJailBreak` (RF) · `AttemptSubjugate` (RF) · `BuyUpgrade` (RF)
 
-`MonsterUpdated` — универсальный: monsters, coins, chaos, jail, hasCage, nextQuestAt, toast (любое сочетание).
+`MonsterUpdated` — универсальный: monsters, coins, chaos, jail, hasCage, nextQuestAt, upgrades, toast (любое сочетание).
 
 Лаборатория **без** отдельного server remote: клиент слушает `ProximityPromptService.PromptTriggered` → `GetPlayerData:InvokeServer()` → проверка `baseId`.
 
@@ -84,10 +87,9 @@ BaseMarkerController → LabController → HudController
 ### Файлы
 
 ```
-Server/   Main, BaseMapService, BaseService, NpcService, PlayerDataService, MonsterService, LabService, MissionService, TrapService, RansomService, ShopService
+Server/   Main, BaseMapService, BaseService, NpcService, PlayerDataService, MonsterService, LabService, MissionService, TrapService, RansomService, ShopService, ShopMapService, JailMapService, JailBreakService, SubjugationService
 Shared/   Config, BaseUtil, MonsterDefs, MonsterDisplay
-Client/   BaseMarkerController, LabController, HudController, UiUtil
-          (Phase 7: + ShopController — отдельный UI магазина)
+Client/   BaseMarkerController, LabController, ShopController, HudController, UiUtil
 bootstrap/ ServerInit, ClientInit
 ```
 
@@ -108,7 +110,10 @@ bootstrap/ ServerInit, ClientInit
 11. **Лаборатория Phase 6**: `jailSlots[i]` (кнопки) → `ransomPanel` overlay (ZIndex=8); `dispatchBtn` для Captured с ransomPrice становится активным (PayRansom).
 12. **`questCooldownUntil`** в DataStore — таймер квеста переживает Stop→Play; клиент синхронизируется через `GetPlayerData.nextQuestAt`.
 13. **Выкуп старых пленников:** если нет `capturedByUserId` — `RansomService` ищет захватчика через `jail` + `BaseService.getOccupant`; при SetRansom backfill `capturedByUserId`.
-14. **Лаборатория ≠ магазин:** лаба = монстры, отправка, ловушка, клетка, выкуп. Магазин и квесты — **отдельное меню** (Phase 7).
+14. **Лаборатория ≠ магазин:** лаба = монстры, отправка, ловушка, клетка, выкуп, подчинение. Магазин, квесты, апгрейды — ShopController.
+15. **`SubjugationService.attemptSubjugate(capturer, monsterId)`** — ищет запись в `capturer.jail`; 50% шанс; провал × 3 → авто-компенсация 30💰 + удаление монстра у обоих.
+16. **`baseUpgrades`** в DataStore; `reinforcedTrap=true` → 40% ловушка в JailBreakService; отображается в ShopController как «куплено».
+17. **`monster.xp/level`** — `MissionService.runMission` начисляет XP; level up toast через 1.5 сек; `MonsterDisplay.fill` показывает «Обычный | Ур.N».
 
 ---
 
@@ -116,16 +121,16 @@ bootstrap/ ServerInit, ClientInit
 
 ### Сделано в этом чате (Cursor + мелкие правки кода)
 
-| Тема | Итог |
-|------|------|
+| Тема           | Итог                                                                                                       |
+| -------------- | ---------------------------------------------------------------------------------------------------------- |
 | Phase 3 polish | 🌀 chaos в HUD; выбор монстра → «Отправить»; таймер fatigue; убрана карточка снизу (MonsterCardController) |
-| Fatigue bug | `syncPlayerMonsters` при join — таймер не переживал Stop→Play |
-| Phase 4–6 | Intent-промпты для Claude Code; GAME.md — логика плена без авто-освобождения |
-| PvP toast | Уведомление защитнику **при отправке**, не после пакости; убран дубль toast (только HudController) |
-| Studio QA | `STUDIO_WALK_SPEED` в Config + BaseService |
-| Выкуп bug | «Нет данных о захватчике» — fallback `capturedByUserId` через jail / base occupant |
-| Phase 6 ✅ | Выкуп, покупка Slime, квест — проверено 2 Players (Claude Code) |
-| UX-решение | Магазин **не должен** быть в лаборатории → **Phase 7, первый шаг** |
+| Fatigue bug    | `syncPlayerMonsters` при join — таймер не переживал Stop→Play                                              |
+| Phase 4–6      | Intent-промпты для Claude Code; GAME.md — логика плена без авто-освобождения                               |
+| PvP toast      | Уведомление защитнику **при отправке**, не после пакости; убран дубль toast (только HudController)         |
+| Studio QA      | `STUDIO_WALK_SPEED` в Config + BaseService                                                                 |
+| Выкуп bug      | «Нет данных о захватчике» — fallback `capturedByUserId` через jail / base occupant                         |
+| Phase 6 ✅     | Выкуп, покупка Slime, квест — проверено 2 Players (Claude Code)                                            |
+| UX-решение     | Магазин **не должен** быть в лаборатории → **Phase 7, первый шаг**                                         |
 
 ### Phase 6 (Claude Code) — уже в коде
 
@@ -212,8 +217,8 @@ bootstrap/ ServerInit, ClientInit
 
 ## История сессий
 
-| Дата       | Итог                                                                              |
-| ---------- | --------------------------------------------------------------------------------- |
-| 2026-06-21 | Setup, Rojo, Phase 1                                                              |
-| 2026-06-22 | Phase 2 ✅; Phase 3 ✅; рефактор; Phase 4 (PvP) ✅; Phase 5 (Defense) ✅ |
+| Дата       | Итог                                                                          |
+| ---------- | ----------------------------------------------------------------------------- |
+| 2026-06-21 | Setup, Rojo, Phase 1                                                          |
+| 2026-06-22 | Phase 2 ✅; Phase 3 ✅; рефактор; Phase 4 (PvP) ✅; Phase 5 (Defense) ✅      |
 | 2026-06-24 | Phase 6 ✅ (выкуп, магазин в лабе, квест); фикс ransom; UX: магазин → Phase 7 |
