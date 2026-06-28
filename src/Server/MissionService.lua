@@ -1,6 +1,8 @@
 local TweenService = game:GetService("TweenService")
-local Config  = require(game.ReplicatedStorage.src.Shared.Config)
-local BaseUtil = require(game.ReplicatedStorage.src.Shared.BaseUtil)
+local Config      = require(game.ReplicatedStorage.src.Shared.Config)
+local BaseUtil    = require(game.ReplicatedStorage.src.Shared.BaseUtil)
+local MonsterDefs = require(game.ReplicatedStorage.src.Shared.MonsterDefs)
+local TrapService = require(game.ReplicatedStorage.src.Server.TrapService)
 
 local _pds = nil
 local _ev  = nil
@@ -123,6 +125,17 @@ local function runMission(player: Player, monsterId: string, targetId: number)
 	local data = _pds.get(player)
 	if not data then return end
 
+	local monsterType        = "Slime"
+	local monsterDisplayName = "Гуппи"
+	for _, m in data.monsters do
+		if m.id == monsterId then
+			monsterType        = m.type or monsterType
+			local def = MonsterDefs[monsterType]
+			monsterDisplayName = def and def.displayName or monsterDisplayName
+			break
+		end
+	end
+
 	local srcSpawn    = BaseUtil.getSpawn(data.baseId)
 	local tgtPlatform = BaseUtil.getMissionPlatform(targetId)
 	if not srcSpawn or not tgtPlatform then return end
@@ -141,6 +154,52 @@ local function runMission(player: Player, monsterId: string, targetId: number)
 	if walker.Parent then walker:Destroy() end
 
 	if not player.Parent then return end
+
+	if targetId > 0 and _bs then
+		local defender = _bs.getOccupant(targetId)
+		if defender and defender.Parent and defender ~= player then
+			local defData = _pds.get(defender)
+			if defData and TrapService.hasCage(defData) and math.random() < Config.TRAP_CATCH_CHANCE then
+				local d = _pds.get(player)
+				if not d then return end
+
+				for _, m in d.monsters do
+					if m.id == monsterId then
+						m.state              = "Captured"
+						m.fatigueUntil       = 0
+						m.capturedByBaseId   = targetId
+						m.capturedByName     = defender.Name
+						m.capturedByUserId   = defender.UserId
+						m.ransomPrice        = nil
+						break
+					end
+				end
+				_pds.save(player)
+
+				if not defData.jail then defData.jail = {} end
+				table.insert(defData.jail, {
+					monsterId    = monsterId,
+					monsterType  = monsterType,
+					monsterName  = monsterDisplayName,
+					ownerName    = player.Name,
+					ownerUserId  = player.UserId,
+				})
+				_pds.save(defender)
+
+				if player.Parent then
+					_ev:FireClient(player, {
+						monsters = d.monsters,
+						toast    = "Твой " .. monsterDisplayName .. " пойман! ⛓️",
+					})
+				end
+				_ev:FireClient(defender, {
+					jail  = defData.jail,
+					toast = "Поймал " .. monsterDisplayName .. " игрока " .. player.Name .. "! 🔒",
+				})
+				return
+			end
+		end
+	end
 
 	local puddlePos = tgtPlatform.Position + Vector3.new(0, tgtPlatform.Size.Y * 0.5, 0)
 	local puddle, conn = createPuddle(puddlePos)
@@ -172,6 +231,15 @@ local function runMission(player: Player, monsterId: string, targetId: number)
 			chaos    = d.chaos,
 			toast    = "Гуппи пакостит! +💰" .. Config.DISPATCH_COINS .. "  +🌀" .. Config.DISPATCH_CHAOS,
 		})
+	end
+
+	if targetId > 0 and _bs then
+		local defender = _bs.getOccupant(targetId)
+		if defender and defender.Parent and defender ~= player then
+			_ev:FireClient(defender, {
+				toast = "⚠️ " .. player.Name .. " отправил монстра на твою базу!",
+			})
+		end
 	end
 
 	scheduleFatigueRecovery(player, monsterId, Config.FATIGUE_TIME)
@@ -253,15 +321,6 @@ function MissionService.dispatch(player: Player, targetBaseId: number, requested
 	local monsterId = monster.id
 	monster.state = "OnMission"
 	_pds.save(player)
-
-	if tgtId > 0 and _bs then
-		local defender = _bs.getOccupant(tgtId)
-		if defender and defender.Parent and defender ~= player then
-			_ev:FireClient(defender, {
-				toast = "⚠️ " .. player.Name .. " отправил монстра на твою базу!",
-			})
-		end
-	end
 
 	_ev:FireClient(player, { monsters = data.monsters })
 

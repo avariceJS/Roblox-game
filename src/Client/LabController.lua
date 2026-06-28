@@ -9,11 +9,15 @@ local BaseUtil       = require(game.ReplicatedStorage.src.Shared.BaseUtil)
 local localPlayer = Players.LocalPlayer
 local src     = game.ReplicatedStorage:WaitForChild("src")
 local Remotes = src:WaitForChild("Remotes")
-local fnGetData  = Remotes:WaitForChild("GetPlayerData")  :: RemoteFunction
-local fnDispatch = Remotes:WaitForChild("DispatchMonster") :: RemoteFunction
-local evMonsterUpdated = Remotes:WaitForChild("MonsterUpdated") :: RemoteEvent
+local fnGetData        = Remotes:WaitForChild("GetPlayerData")   :: RemoteFunction
+local fnDispatch       = Remotes:WaitForChild("DispatchMonster") :: RemoteFunction
+local fnSetTrap        = Remotes:WaitForChild("SetTrap")         :: RemoteFunction
+local fnSetRansom      = Remotes:WaitForChild("SetRansom")       :: RemoteFunction
+local fnPayRansom      = Remotes:WaitForChild("PayRansom")       :: RemoteFunction
+local fnBuyMonster     = Remotes:WaitForChild("BuyMonster")      :: RemoteFunction
+local fnDoQuest        = Remotes:WaitForChild("DoQuest")         :: RemoteFunction
+local evMonsterUpdated = Remotes:WaitForChild("MonsterUpdated")  :: RemoteEvent
 
--- ── GUI ────────────────────────────────────────────────────────────────────
 local gui = Instance.new("ScreenGui")
 gui.Name           = "LabHUD"
 gui.ResetOnSpawn   = false
@@ -30,8 +34,8 @@ overlay.Visible                = false
 overlay.Parent                 = gui
 
 local panel = Instance.new("Frame")
-panel.Size                   = UDim2.new(0, 360, 0, 420)
-panel.Position               = UDim2.new(0.5, -180, 0.5, -210)
+panel.Size                   = UDim2.new(0, 360, 0, 600)
+panel.Position               = UDim2.new(0.5, -180, 0.5, -300)
 panel.BackgroundColor3       = Color3.fromRGB(18, 18, 28)
 panel.BackgroundTransparency = 0.08
 panel.BorderSizePixel        = 0
@@ -70,7 +74,6 @@ divider.BackgroundColor3 = Color3.fromRGB(60, 70, 100)
 divider.BorderSizePixel  = 0
 divider.Parent           = panel
 
--- ── Monster slot ───────────────────────────────────────────────────────────
 local slot = Instance.new("TextButton")
 slot.Size                   = UDim2.new(1, -32, 0, 110)
 slot.Position               = UDim2.new(0, 16, 0, 70)
@@ -83,10 +86,10 @@ slot.Parent                 = panel
 UiUtil.corner(slot, 10)
 
 local slotStroke = Instance.new("UIStroke")
-slotStroke.Color       = Color3.fromRGB(80, 220, 80)
-slotStroke.Thickness   = 2
+slotStroke.Color        = Color3.fromRGB(80, 220, 80)
+slotStroke.Thickness    = 2
 slotStroke.Transparency = 1
-slotStroke.Parent      = slot
+slotStroke.Parent       = slot
 
 local slotIcon = Instance.new("TextLabel")
 slotIcon.Size                   = UDim2.new(0, 70, 1, 0)
@@ -140,10 +143,9 @@ emptyLabel.Font                   = Enum.Font.Gotham
 emptyLabel.Visible                = false
 emptyLabel.Parent                 = panel
 
--- ── Dispatch button ────────────────────────────────────────────────────────
 local dispatchBtn = Instance.new("TextButton")
 dispatchBtn.Size                   = UDim2.new(1, -32, 0, 52)
-dispatchBtn.Position               = UDim2.new(0, 16, 1, -72)
+dispatchBtn.Position               = UDim2.new(0, 16, 1, -66)
 dispatchBtn.BackgroundColor3       = Color3.fromRGB(50, 50, 70)
 dispatchBtn.BackgroundTransparency = 0.15
 dispatchBtn.BorderSizePixel        = 0
@@ -156,9 +158,116 @@ dispatchBtn.Active                 = false
 dispatchBtn.Parent                 = panel
 UiUtil.corner(dispatchBtn, 10)
 
--- ── Target picker ──────────────────────────────────────────────────────────
+local defenseSection = Instance.new("Frame")
+defenseSection.Size                   = UDim2.new(1, -32, 0, 212)
+defenseSection.Position               = UDim2.new(0, 16, 0, 192)
+defenseSection.BackgroundTransparency = 1
+defenseSection.BorderSizePixel        = 0
+defenseSection.Parent                 = panel
+
+local cageBtn = Instance.new("TextButton")
+cageBtn.Size                   = UDim2.new(1, 0, 0, 44)
+cageBtn.BackgroundColor3       = Color3.fromRGB(50, 50, 70)
+cageBtn.BackgroundTransparency = 0.15
+cageBtn.BorderSizePixel        = 0
+cageBtn.Text                   = "🔒 Клетка: выкл"
+cageBtn.TextColor3             = Color3.fromRGB(160, 160, 180)
+cageBtn.TextScaled             = true
+cageBtn.Font                   = Enum.Font.GothamBold
+cageBtn.AutoButtonColor        = true
+cageBtn.Parent                 = defenseSection
+UiUtil.corner(cageBtn, 10)
+
+local jailFrame = Instance.new("Frame")
+jailFrame.Size                   = UDim2.new(1, 0, 0, 160)
+jailFrame.Position               = UDim2.new(0, 0, 0, 52)
+jailFrame.BackgroundColor3       = Color3.fromRGB(22, 14, 14)
+jailFrame.BackgroundTransparency = 0.2
+jailFrame.BorderSizePixel        = 0
+jailFrame.Parent                 = defenseSection
+UiUtil.corner(jailFrame, 8)
+
+local jailTitle = Instance.new("TextLabel")
+jailTitle.Size                   = UDim2.new(1, -12, 0, 26)
+jailTitle.Position               = UDim2.new(0, 8, 0, 6)
+jailTitle.BackgroundTransparency = 1
+jailTitle.Text                   = "🔒 Клетка нарушителей"
+jailTitle.TextColor3             = Color3.fromRGB(200, 140, 80)
+jailTitle.TextScaled             = true
+jailTitle.Font                   = Enum.Font.GothamBold
+jailTitle.TextXAlignment         = Enum.TextXAlignment.Left
+jailTitle.Parent                 = jailFrame
+
+local MAX_JAIL_SLOTS = 3
+local jailSlots: { TextButton } = {}
+
+for i = 1, MAX_JAIL_SLOTS do
+	local btn = Instance.new("TextButton")
+	btn.Size                   = UDim2.new(1, -16, 0, 36)
+	btn.Position               = UDim2.new(0, 8, 0, 36 + (i - 1) * 42)
+	btn.BackgroundColor3       = Color3.fromRGB(35, 18, 18)
+	btn.BackgroundTransparency = 0.15
+	btn.BorderSizePixel        = 0
+	btn.Text                   = ""
+	btn.TextColor3             = Color3.fromRGB(200, 160, 80)
+	btn.TextScaled             = true
+	btn.Font                   = Enum.Font.Gotham
+	btn.TextXAlignment         = Enum.TextXAlignment.Left
+	btn.AutoButtonColor        = true
+	btn.Visible                = false
+	btn.Parent                 = jailFrame
+	UiUtil.corner(btn, 6)
+	jailSlots[i] = btn
+end
+
+local shopSection = Instance.new("Frame")
+shopSection.Size                   = UDim2.new(1, -32, 0, 64)
+shopSection.Position               = UDim2.new(0, 16, 0, 412)
+shopSection.BackgroundTransparency = 1
+shopSection.BorderSizePixel        = 0
+shopSection.Parent                 = panel
+
+local shopTitle = Instance.new("TextLabel")
+shopTitle.Size                   = UDim2.new(1, 0, 0, 18)
+shopTitle.BackgroundTransparency = 1
+shopTitle.Text                   = "🏪 Магазин монстров"
+shopTitle.TextColor3             = Color3.fromRGB(180, 210, 255)
+shopTitle.TextScaled             = true
+shopTitle.Font                   = Enum.Font.GothamBold
+shopTitle.TextXAlignment         = Enum.TextXAlignment.Left
+shopTitle.Parent                 = shopSection
+
+local buySlimeBtn = Instance.new("TextButton")
+buySlimeBtn.Size                   = UDim2.new(1, 0, 0, 40)
+buySlimeBtn.Position               = UDim2.new(0, 0, 0, 22)
+buySlimeBtn.BackgroundColor3       = Color3.fromRGB(30, 60, 90)
+buySlimeBtn.BackgroundTransparency = 0.15
+buySlimeBtn.BorderSizePixel        = 0
+buySlimeBtn.Text                   = "🐸 Гуппи (Слизень) — 50💰"
+buySlimeBtn.TextColor3             = Color3.fromRGB(180, 220, 255)
+buySlimeBtn.TextScaled             = true
+buySlimeBtn.Font                   = Enum.Font.GothamBold
+buySlimeBtn.AutoButtonColor        = true
+buySlimeBtn.Parent                 = shopSection
+UiUtil.corner(buySlimeBtn, 8)
+
+local questBtn = Instance.new("TextButton")
+questBtn.Size                   = UDim2.new(1, -32, 0, 44)
+questBtn.Position               = UDim2.new(0, 16, 0, 484)
+questBtn.BackgroundColor3       = Color3.fromRGB(60, 40, 20)
+questBtn.BackgroundTransparency = 0.15
+questBtn.BorderSizePixel        = 0
+questBtn.Text                   = "💼 Мелкая работа  +25💰"
+questBtn.TextColor3             = Color3.fromRGB(255, 200, 80)
+questBtn.TextScaled             = true
+questBtn.Font                   = Enum.Font.GothamBold
+questBtn.AutoButtonColor        = true
+questBtn.Active                 = true
+questBtn.Parent                 = panel
+UiUtil.corner(questBtn, 10)
+
 local picker = Instance.new("Frame")
-picker.Size                   = UDim2.new(1, -32, 0, 340)
+picker.Size                   = UDim2.new(1, -32, 0, 460)
 picker.Position               = UDim2.new(0, 16, 0, 66)
 picker.BackgroundColor3       = Color3.fromRGB(14, 14, 24)
 picker.BackgroundTransparency = 0
@@ -214,14 +323,98 @@ pickerBack.Font                   = Enum.Font.GothamBold
 pickerBack.Parent                 = picker
 UiUtil.corner(pickerBack, 8)
 
+local ransomPanel = Instance.new("Frame")
+ransomPanel.Size                   = UDim2.fromScale(1, 1)
+ransomPanel.BackgroundColor3       = Color3.fromRGB(0, 0, 0)
+ransomPanel.BackgroundTransparency = 0.35
+ransomPanel.BorderSizePixel        = 0
+ransomPanel.ZIndex                 = 8
+ransomPanel.Visible                = false
+ransomPanel.Parent                 = panel
+UiUtil.corner(ransomPanel, 14)
+
+local ransomCard = Instance.new("Frame")
+ransomCard.Size                   = UDim2.new(0.82, 0, 0, 250)
+ransomCard.Position               = UDim2.new(0.09, 0, 0.5, -125)
+ransomCard.BackgroundColor3       = Color3.fromRGB(28, 16, 10)
+ransomCard.BackgroundTransparency = 0.05
+ransomCard.BorderSizePixel        = 0
+ransomCard.ZIndex                 = 9
+ransomCard.Parent                 = ransomPanel
+UiUtil.corner(ransomCard, 12)
+
+local ransomTitle = Instance.new("TextLabel")
+ransomTitle.Size                   = UDim2.new(1, -16, 0, 36)
+ransomTitle.Position               = UDim2.new(0, 8, 0, 10)
+ransomTitle.BackgroundTransparency = 1
+ransomTitle.Text                   = "Задать выкуп"
+ransomTitle.TextColor3             = Color3.fromRGB(255, 200, 80)
+ransomTitle.TextScaled             = true
+ransomTitle.Font                   = Enum.Font.GothamBold
+ransomTitle.ZIndex                 = 10
+ransomTitle.Parent                 = ransomCard
+
+local ransomInfo = Instance.new("TextLabel")
+ransomInfo.Size                   = UDim2.new(1, -16, 0, 28)
+ransomInfo.Position               = UDim2.new(0, 8, 0, 50)
+ransomInfo.BackgroundTransparency = 1
+ransomInfo.Text                   = ""
+ransomInfo.TextColor3             = Color3.fromRGB(200, 180, 160)
+ransomInfo.TextScaled             = true
+ransomInfo.Font                   = Enum.Font.Gotham
+ransomInfo.ZIndex                 = 10
+ransomInfo.Parent                 = ransomCard
+
+local RANSOM_PRESETS = { 25, 50, 100, 200 }
+local ransomPriceBtns: { TextButton } = {}
+
+for i, price in RANSOM_PRESETS do
+	local col = (i - 1) % 2
+	local row = math.floor((i - 1) / 2)
+	local btn = Instance.new("TextButton")
+	btn.Size                   = UDim2.new(0.5, col == 0 and -6 or -4, 0, 44)
+	btn.Position               = UDim2.new(col * 0.5, col == 0 and 8 or -2, 0, 88 + row * 52)
+	btn.BackgroundColor3       = Color3.fromRGB(80, 50, 20)
+	btn.BackgroundTransparency = 0.15
+	btn.BorderSizePixel        = 0
+	btn.Text                   = "💰 " .. price
+	btn.TextColor3             = Color3.fromRGB(255, 200, 80)
+	btn.TextScaled             = true
+	btn.Font                   = Enum.Font.GothamBold
+	btn.AutoButtonColor        = true
+	btn.ZIndex                 = 10
+	btn.Parent                 = ransomCard
+	UiUtil.corner(btn, 8)
+	ransomPriceBtns[i] = btn
+end
+
+local ransomCancel = Instance.new("TextButton")
+ransomCancel.Size                   = UDim2.new(1, -16, 0, 36)
+ransomCancel.Position               = UDim2.new(0, 8, 0, 200)
+ransomCancel.BackgroundColor3       = Color3.fromRGB(50, 30, 30)
+ransomCancel.BackgroundTransparency = 0.2
+ransomCancel.BorderSizePixel        = 0
+ransomCancel.Text                   = "Отмена"
+ransomCancel.TextColor3             = Color3.fromRGB(255, 120, 120)
+ransomCancel.TextScaled             = true
+ransomCancel.Font                   = Enum.Font.GothamBold
+ransomCancel.AutoButtonColor        = true
+ransomCancel.ZIndex                 = 10
+ransomCancel.Parent                 = ransomCard
+UiUtil.corner(ransomCancel, 8)
+
 local showToast = UiUtil.makeToast(gui, UDim2.new(0.5, -200, 0, 72), 400)
 
--- ── State ──────────────────────────────────────────────────────────────────
-local playerBaseId:      number? = nil
-local lastMonsters:     { any }? = nil
-local lastTargets:       { any }  = {}
-local selectedMonsterId: string? = nil
-local fatigueTickConn: RBXScriptConnection? = nil
+local playerBaseId:       number?  = nil
+local lastMonsters:      { any }?  = nil
+local lastTargets:        { any }  = {}
+local selectedMonsterId:  string?  = nil
+local hasCage:  boolean = false
+local jailData: { any } = {}
+local nextQuestAt: number = 0
+local selectedJailIdx: number = 0
+local tickConn: RBXScriptConnection? = nil
+local tickElapsed = 0
 
 local monsterLabels = {
 	icon   = slotIcon,
@@ -230,14 +423,56 @@ local monsterLabels = {
 	state  = slotState,
 }
 
-local function getMonsterById(id: string?): any?
-	if not id or not lastMonsters then
-		return nil
+local function stopTick()
+	if tickConn then
+		tickConn:Disconnect()
+		tickConn = nil
 	end
+	tickElapsed = 0
+end
+
+local function hasFatiguedMonster(monsters: { any }?): boolean
+	if not monsters then return false end
+	for _, m in monsters do
+		if m.state == "Fatigued" then return true end
+	end
+	return false
+end
+
+local function needsTick(): boolean
+	if hasFatiguedMonster(lastMonsters) then return true end
+	if nextQuestAt > 0 and os.time() < nextQuestAt then return true end
+	return false
+end
+
+local function updateQuestBtn()
+	local now = os.time()
+	if nextQuestAt <= now then
+		questBtn.Active           = true
+		questBtn.AutoButtonColor  = true
+		questBtn.BackgroundColor3 = Color3.fromRGB(60, 40, 20)
+		questBtn.TextColor3       = Color3.fromRGB(255, 200, 80)
+		questBtn.Text             = "💼 Мелкая работа  +25💰"
+	else
+		local left = nextQuestAt - now
+		questBtn.Active           = false
+		questBtn.AutoButtonColor  = false
+		questBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+		questBtn.TextColor3       = Color3.fromRGB(120, 120, 140)
+		questBtn.Text             = "💼 Перезарядка... " .. left .. " сек"
+	end
+end
+
+local function fatigueButtonSuffix(monster: any): string
+	local left = MonsterDisplay.fatigueSecondsLeft(monster)
+	if left == nil then return "" end
+	return " · " .. left .. " сек"
+end
+
+local function getMonsterById(id: string?): any?
+	if not id or not lastMonsters then return nil end
 	for _, m in lastMonsters do
-		if m.id == id then
-			return m
-		end
+		if m.id == id then return m end
 	end
 	return nil
 end
@@ -251,33 +486,6 @@ local function setSlotSelected(selected: boolean)
 	slot.BackgroundColor3 = if selected
 		then Color3.fromRGB(34, 48, 38)
 		else Color3.fromRGB(28, 28, 42)
-end
-
-local function stopFatigueTick()
-	if fatigueTickConn then
-		fatigueTickConn:Disconnect()
-		fatigueTickConn = nil
-	end
-end
-
-local function hasFatiguedMonster(monsters: { any }?): boolean
-	if not monsters then
-		return false
-	end
-	for _, m in monsters do
-		if m.state == "Fatigued" then
-			return true
-		end
-	end
-	return false
-end
-
-local function fatigueButtonSuffix(monster: any): string
-	local left = MonsterDisplay.fatigueSecondsLeft(monster)
-	if left == nil then
-		return ""
-	end
-	return " · " .. left .. " сек"
 end
 
 local function renderDispatch()
@@ -308,6 +516,21 @@ local function renderDispatch()
 		dispatchBtn.BackgroundColor3 = Color3.fromRGB(80, 70, 20)
 		dispatchBtn.TextColor3       = Color3.fromRGB(255, 200, 80)
 		dispatchBtn.Text             = "На задании 🐸"
+	elseif selected.state == "Captured" then
+		local price = selected.ransomPrice
+		if price and price > 0 then
+			dispatchBtn.Active           = true
+			dispatchBtn.AutoButtonColor  = true
+			dispatchBtn.BackgroundColor3 = Color3.fromRGB(120, 60, 20)
+			dispatchBtn.TextColor3       = Color3.fromRGB(255, 210, 100)
+			dispatchBtn.Text             = "Выкупить 💰 " .. price
+		else
+			dispatchBtn.Active           = false
+			dispatchBtn.AutoButtonColor  = false
+			dispatchBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 20)
+			dispatchBtn.TextColor3       = Color3.fromRGB(255, 100, 100)
+			dispatchBtn.Text             = "Пойман ⛓️ · нет цены"
+		end
 	else
 		dispatchBtn.Active           = false
 		dispatchBtn.AutoButtonColor  = false
@@ -317,36 +540,59 @@ local function renderDispatch()
 	end
 end
 
-local function refreshFatigueLabels()
+local function refreshTimedLabels()
 	local monster = MonsterDisplay.first(lastMonsters)
 	if monster then
 		MonsterDisplay.fill(monsterLabels, monster)
 	end
 	renderDispatch()
+	updateQuestBtn()
 end
 
-local function startFatigueTickIfNeeded()
-	stopFatigueTick()
-	if not overlay.Visible or not hasFatiguedMonster(lastMonsters) then
-		return
-	end
-
-	local elapsed = 0
-	fatigueTickConn = RunService.Heartbeat:Connect(function(dt)
-		if not overlay.Visible then
-			stopFatigueTick()
-			return
-		end
-		elapsed += dt
-		if elapsed < 1 then
-			return
-		end
-		elapsed = 0
-		refreshFatigueLabels()
-		if not hasFatiguedMonster(lastMonsters) then
-			stopFatigueTick()
-		end
+local function startTickIfNeeded()
+	stopTick()
+	if not overlay.Visible or not needsTick() then return end
+	tickElapsed = 0
+	tickConn = RunService.Heartbeat:Connect(function(dt)
+		if not overlay.Visible then stopTick(); return end
+		tickElapsed += dt
+		if tickElapsed < 1 then return end
+		tickElapsed = 0
+		refreshTimedLabels()
+		if not needsTick() then stopTick() end
 	end)
+end
+
+local function updateCageButton(active: boolean)
+	hasCage = active
+	if active then
+		cageBtn.Text             = "🔒 Клетка: вкл"
+		cageBtn.BackgroundColor3 = Color3.fromRGB(30, 90, 40)
+		cageBtn.TextColor3       = Color3.fromRGB(100, 255, 120)
+	else
+		cageBtn.Text             = "🔒 Клетка: выкл"
+		cageBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
+		cageBtn.TextColor3       = Color3.fromRGB(160, 160, 180)
+	end
+end
+
+local function updateJailSlots()
+	for i = 1, MAX_JAIL_SLOTS do
+		local entry = jailData[i]
+		local btn = jailSlots[i]
+		if entry then
+			btn.Visible = true
+			local priceStr = entry.ransomPrice and ("💰" .. entry.ransomPrice) or "нет цены"
+			btn.Text = "⛓ " .. (entry.monsterName or "?") .. " (" .. (entry.ownerName or "?") .. ")  " .. priceStr
+		else
+			btn.Visible = false
+		end
+	end
+end
+
+local function renderJail(jail: { any }?)
+	jailData = jail or {}
+	updateJailSlots()
 end
 
 local function render(monsters: { any }?)
@@ -366,12 +612,15 @@ local function render(monsters: { any }?)
 	setSlotSelected(selectedMonsterId ~= nil)
 	dispatchBtn.Visible = true
 	renderDispatch()
-	startFatigueTickIfNeeded()
+	startTickIfNeeded()
 end
 
 local function setPickerVisible(visible: boolean)
-	picker.Visible      = visible
-	dispatchBtn.Visible = not visible
+	picker.Visible         = visible
+	dispatchBtn.Visible    = not visible
+	defenseSection.Visible = not visible
+	shopSection.Visible    = not visible
+	questBtn.Visible       = not visible
 	if visible then
 		slot.Visible       = false
 		emptyLabel.Visible = false
@@ -380,30 +629,48 @@ local function setPickerVisible(visible: boolean)
 	end
 end
 
+local function closeRansomPanel()
+	ransomPanel.Visible = false
+	selectedJailIdx = 0
+end
+
+local function openRansomPanel(idx: number)
+	local entry = jailData[idx]
+	if not entry then return end
+	selectedJailIdx = idx
+	ransomInfo.Text = (entry.monsterName or "?") .. " игрока " .. (entry.ownerName or "?")
+	ransomPanel.Visible = true
+end
+
 local function setOpen(isOpen: boolean)
 	overlay.Visible = isOpen
 	panel.Visible   = isOpen
 	if not isOpen then
-		picker.Visible      = false
-		dispatchBtn.Visible = true
-		selectedMonsterId   = nil
-		stopFatigueTick()
+		picker.Visible         = false
+		dispatchBtn.Visible    = true
+		defenseSection.Visible = true
+		shopSection.Visible    = true
+		questBtn.Visible       = true
+		ransomPanel.Visible    = false
+		selectedMonsterId      = nil
+		selectedJailIdx        = 0
+		stopTick()
 	else
-		startFatigueTickIfNeeded()
+		defenseSection.Visible = true
+		shopSection.Visible    = true
+		questBtn.Visible       = true
+		startTickIfNeeded()
 	end
 end
 
 slot.MouseButton1Click:Connect(function()
 	local monster = MonsterDisplay.first(lastMonsters)
-	if not monster then
-		return
-	end
+	if not monster then return end
 	selectedMonsterId = monster.id
 	setSlotSelected(true)
 	renderDispatch()
 end)
 
--- ── Picker open ─────────────────────────────────────────────────────────────
 local function openPicker()
 	for slotIdx = 1, MAX_PICKER_BTNS do
 		local target = lastTargets[slotIdx]
@@ -448,9 +715,67 @@ pickerBack.MouseButton1Click:Connect(function()
 	setPickerVisible(false)
 end)
 
+for i = 1, MAX_JAIL_SLOTS do
+	local btn = jailSlots[i]
+	local idx = i
+	btn.MouseButton1Click:Connect(function()
+		openRansomPanel(idx)
+	end)
+end
+
+for i, price in RANSOM_PRESETS do
+	local btn = ransomPriceBtns[i]
+	local p = price
+	btn.MouseButton1Click:Connect(function()
+		if selectedJailIdx == 0 then return end
+		local entry = jailData[selectedJailIdx]
+		if not entry then return end
+		local result = fnSetRansom:InvokeServer({ monsterId = entry.monsterId, price = p })
+		closeRansomPanel()
+		if not (result and result.ok) then
+			showToast((result and result.message) or "Ошибка задания выкупа")
+		end
+	end)
+end
+
+ransomCancel.MouseButton1Click:Connect(closeRansomPanel)
+
+cageBtn.MouseButton1Click:Connect(function()
+	local result = fnSetTrap:InvokeServer({ active = not hasCage })
+	if not result or not result.ok then
+		showToast((result and result.message) or "Ошибка активации ловушки")
+	end
+end)
+
 dispatchBtn.MouseButton1Click:Connect(function()
-	if dispatchBtn.Active then
+	if not dispatchBtn.Active then return end
+	local selected = getSelectedMonster()
+	if selected and selected.state == "Captured" then
+		local result = fnPayRansom:InvokeServer({ monsterId = selected.id })
+		if result and result.ok then
+			showToast("Монстр выкуплен! 🐸")
+		else
+			showToast((result and result.message) or "Ошибка выкупа")
+		end
+	else
 		openPicker()
+	end
+end)
+
+buySlimeBtn.MouseButton1Click:Connect(function()
+	local result = fnBuyMonster:InvokeServer({ monsterType = "Slime" })
+	if result and result.ok then
+		showToast("Купил нового Гуппи! 🐸")
+	else
+		showToast((result and result.message) or "Ошибка покупки")
+	end
+end)
+
+questBtn.MouseButton1Click:Connect(function()
+	if not questBtn.Active then return end
+	local result = fnDoQuest:InvokeServer()
+	if not (result and result.ok) then
+		showToast((result and result.message) or "Ошибка квеста")
 	end
 end)
 
@@ -466,7 +791,6 @@ overlay.InputBegan:Connect(function(input)
 	end
 end)
 
--- ── Lab open trigger ────────────────────────────────────────────────────────
 local function openLab(labBaseId: any)
 	local labId = BaseUtil.normalizeId(labBaseId)
 	local data  = fnGetData:InvokeServer()
@@ -484,7 +808,11 @@ local function openLab(labBaseId: any)
 
 	playerBaseId      = myId
 	lastTargets       = data.targets or {}
+	nextQuestAt       = data.nextQuestAt or 0
 	selectedMonsterId = nil
+	updateCageButton(data.hasCage == true)
+	renderJail(data.jail)
+	updateQuestBtn()
 	render(data.monsters)
 	setOpen(true)
 end
@@ -498,12 +826,22 @@ ProximityPromptService.PromptTriggered:Connect(function(prompt: ProximityPrompt,
 end)
 
 evMonsterUpdated.OnClientEvent:Connect(function(payload)
-	if not payload.monsters then
-		return
+	if payload.hasCage ~= nil then
+		updateCageButton(payload.hasCage == true)
 	end
-	lastMonsters = payload.monsters
-	if overlay.Visible and not picker.Visible then
-		render(payload.monsters)
+	if payload.jail then
+		renderJail(payload.jail)
+	end
+	if payload.monsters then
+		lastMonsters = payload.monsters
+		if overlay.Visible and not picker.Visible then
+			render(payload.monsters)
+		end
+	end
+	if payload.nextQuestAt ~= nil then
+		nextQuestAt = payload.nextQuestAt
+		updateQuestBtn()
+		startTickIfNeeded()
 	end
 end)
 

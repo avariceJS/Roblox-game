@@ -16,6 +16,14 @@ return {
 	SLOW_DURATION        = 4,
 	LAB_PROMPT_DISTANCE  = 14,
 	STUDIO_WALK_SPEED    = 64,
+	CAGE_COST           = 0,
+	TRAP_CATCH_CHANCE   = 1.0,
+
+	RANSOM_MIN          = 10,
+	RANSOM_MAX          = 500,
+	SHOP_PRICES         = { Slime = 50 },
+	QUEST_REWARD        = 25,
+	QUEST_COOLDOWN      = 120,
 
 	NPC_HOME_ID       = 0,
 	NPC_HOME_POSITION = Vector3.new(90, 0.5, 35),

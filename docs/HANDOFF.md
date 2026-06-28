@@ -6,23 +6,28 @@
 
 ## Сейчас
 
-|                   |                                                              |
-| ----------------- | ------------------------------------------------------------ |
-| **Фаза**          | Phase 4 ✅ — PvP Attack                                      |
-| **Следующий шаг** | **Phase 5** — Defense (ловушки, клетка, захват монстра)      |
-| **Блокеры**       | нет                                                          |
-| **Workflow**      | `rojo serve` → Accept → **Stop → Play Solo** / **2 Players** |
+|                   |                                                                               |
+| ----------------- | ----------------------------------------------------------------------------- |
+| **Фаза**          | Phase 6 ✅ — Economy & Jail Ransom (логика работает)                          |
+| **Следующий шаг** | **Phase 7** — сначала **отдельный магазин** (UI), потом влом / jail break     |
+| **UX-долг**       | Магазин + квест сейчас **внутри лаборатории** — вынести в отдельное меню       |
+| **Блокеры**       | нет                                                                           |
+| **Workflow**      | `rojo serve` → Accept → **Stop → Play Solo** / **2 Players**                  |
+
+### Дизайн после поимки (зафиксировано)
+
+Полная логика: **`GAME.md` → «Пойманный монстр»**. Кратко: выкуп (Phase 6 ✅) → влом (Phase 7) → подчинение / компенсация (Phase 8) → Robux (8+). **Нет освобождения через 5 мин.**
 
 ### Как продолжить
 
 ```
-Продолжаем Rent-a-Monster. Прочитай docs/HANDOFF.md, docs/PROJECT.md, docs/ROADMAP.md.
-Phase 5 — Defense. Дай intent-промпт для Claude Code.
+Продолжаем Rent-a-Monster. Прочитай docs/HANDOFF.md, docs/PROJECT.md, docs/ROADMAP.md, docs/GAME.md.
+Phase 7 — отдельный магазин монстров (вынести из LabController) + Jail Break. Дай intent-промпт для Claude Code.
 ```
 
 ---
 
-## Что работает (Play Solo / 2 Players, 2026-06-22)
+## Что работает (Play Solo / 2 Players, 2026-06-24)
 
 - **6 баз** — сервер создаёт `Workspace.Bases` из `Config.BASE_LAYOUT` (`BaseMapService`)
 - **NPC-дом** — `Workspace.NpcHomes/House`, коричневый Part, позиция из `Config.NPC_HOME_POSITION`
@@ -31,18 +36,23 @@ Phase 5 — Defense. Дай intent-промпт для Claude Code.
 - **Лаборатория** — [E] у капсулы на **своей** базе → UI с Гуппи; чужая база → toast (`LabController`)
 - **Стартовый монстр** — Slime/Гуппи при первом join (`MonsterService`)
 - **Отправка монстра** — пикер целей (NPC-дом + живые игроки) → walker-шар → лужа → монеты+chaos → Fatigued → Idle
-- **Защитник** — toast-уведомление «⚠️ X натравил монстра на твою базу!» при атаке
+- **Защитник** — toast-уведомление при атаке; ловушка Cage в лаборатории
+- **Клетка** — при активной Cage + атаке: монстр → Captured, запись в `data.jail` защитника
+- **Toast обоим** — атакующий «Твой Гуппи пойман! ⛓️», защитник «Поймал Гуппи! 🔒»
 - **Workspace** организован: `Workspace.Bases`, `Workspace.Labs`, `Workspace.Missions`, `Workspace.NpcHomes`
+- **Выкуп** — захватчик кликает слот клетки → задаёт цену (25/50/100/200); владелец видит «Выкупить 💰 N» → платит → монстр Idle
+- **Магазин / квест** — пока **в лаборатории** (🏪 Гуппи 50💰, 💼 мелкая работа +25💰) — **вынести в отдельное меню (Phase 7)**
+- **Studio-only:** `Config.STUDIO_WALK_SPEED = 64` — быстрая ходьба в Play Solo для тестов
 
 ---
 
 ## Архитектура (не ломать без причины)
 
-### Remotes (ровно 4)
+### Remotes (9)
 
-`GetPlayerData` (RemoteFunction) · `BaseAssigned` (RemoteEvent) · `MonsterUpdated` (RemoteEvent) · `DispatchMonster` (RemoteFunction)
+`GetPlayerData` (RF) · `BaseAssigned` (RE) · `MonsterUpdated` (RE) · `DispatchMonster` (RF) · `SetTrap` (RF) · `SetRansom` (RF) · `PayRansom` (RF) · `BuyMonster` (RF) · `DoQuest` (RF)
 
-`MonsterUpdated` используется и для обновления монстров, и для defender-toast (payload без `monsters`).
+`MonsterUpdated` — универсальный: monsters, coins, chaos, jail, hasCage, nextQuestAt, toast (любое сочетание).
 
 Лаборатория **без** отдельного server remote: клиент слушает `ProximityPromptService.PromptTriggered` → `GetPlayerData:InvokeServer()` → проверка `baseId`.
 
@@ -74,9 +84,10 @@ BaseMarkerController → LabController → HudController
 ### Файлы
 
 ```
-Server/   Main, BaseMapService, BaseService, NpcService, PlayerDataService, MonsterService, LabService, MissionService
+Server/   Main, BaseMapService, BaseService, NpcService, PlayerDataService, MonsterService, LabService, MissionService, TrapService, RansomService, ShopService
 Shared/   Config, BaseUtil, MonsterDefs, MonsterDisplay
 Client/   BaseMarkerController, LabController, HudController, UiUtil
+          (Phase 7: + ShopController — отдельный UI магазина)
 bootstrap/ ServerInit, ClientInit
 ```
 
@@ -92,9 +103,85 @@ bootstrap/ ServerInit, ClientInit
 6. **`LabService.init()`** — без аргументов, Config импортирован внутри модуля.
 7. **`MissionService.dispatch(player, rawId, requestedId?)`** — rawId передаётся as-is из Main (не normalizeId); 0 = NPC-дом.
 8. **`MissionService.init(pds, ev, baseService)`** — третий аргумент BaseService обязателен для defender toast.
-9. **`evMonsterUpdated` toast-only payload** — LabController: если `payload.toast` и нет `payload.monsters` → показать toast, вернуться. HudController не ломается (payload без monsters игнорируется).
+9. **`evMonsterUpdated`** — LabController обрабатывает `payload.hasCage`, `payload.jail`, `payload.monsters`, `payload.nextQuestAt` независимо. HudController показывает toast если есть `payload.toast`.
+10. **`RansomService.payRansom`** вызывает `PlayerDataService.modifyByUserId` напрямую (require внутри модуля) — захватчик может быть оффлайн.
+11. **Лаборатория Phase 6**: `jailSlots[i]` (кнопки) → `ransomPanel` overlay (ZIndex=8); `dispatchBtn` для Captured с ransomPrice становится активным (PayRansom).
+12. **`questCooldownUntil`** в DataStore — таймер квеста переживает Stop→Play; клиент синхронизируется через `GetPlayerData.nextQuestAt`.
+13. **Выкуп старых пленников:** если нет `capturedByUserId` — `RansomService` ищет захватчика через `jail` + `BaseService.getOccupant`; при SetRansom backfill `capturedByUserId`.
+14. **Лаборатория ≠ магазин:** лаба = монстры, отправка, ловушка, клетка, выкуп. Магазин и квесты — **отдельное меню** (Phase 7).
 
 ---
+
+## Последняя сессия (Cursor, 2026-06-24) — контекст + Phase 6 polish
+
+### Сделано в этом чате (Cursor + мелкие правки кода)
+
+| Тема | Итог |
+|------|------|
+| Phase 3 polish | 🌀 chaos в HUD; выбор монстра → «Отправить»; таймер fatigue; убрана карточка снизу (MonsterCardController) |
+| Fatigue bug | `syncPlayerMonsters` при join — таймер не переживал Stop→Play |
+| Phase 4–6 | Intent-промпты для Claude Code; GAME.md — логика плена без авто-освобождения |
+| PvP toast | Уведомление защитнику **при отправке**, не после пакости; убран дубль toast (только HudController) |
+| Studio QA | `STUDIO_WALK_SPEED` в Config + BaseService |
+| Выкуп bug | «Нет данных о захватчике» — fallback `capturedByUserId` через jail / base occupant |
+| Phase 6 ✅ | Выкуп, покупка Slime, квест — проверено 2 Players (Claude Code) |
+| UX-решение | Магазин **не должен** быть в лаборатории → **Phase 7, первый шаг** |
+
+### Phase 6 (Claude Code) — уже в коде
+
+См. таблицы ниже (RansomService, ShopService, remotes SetRansom/PayRansom/BuyMonster/DoQuest).
+
+---
+
+## Предыдущая сессия (2026-06-24) — Phase 6 Economy & Jail Ransom (Claude Code)
+
+### Создано
+
+| Файл                       | Что сделано                                                                              |
+| -------------------------- | ---------------------------------------------------------------------------------------- |
+| `Server/RansomService.lua` | `setRansom(defData, monsterId, price)`, `payRansom(payerData, monsterId)` — offline-safe |
+| `Server/ShopService.lua`   | `buyMonster(data, monsterType)` — списывает монеты, добавляет монстра в data.monsters    |
+
+### Изменено
+
+| Файл                           | Изменение                                                                                                                          |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `Shared/Config.lua`            | RANSOM_MIN=10, RANSOM_MAX=500, SHOP_PRICES={Slime=50}, QUEST_REWARD=25, QUEST_COOLDOWN=120                                         |
+| `Server/PlayerDataService.lua` | `questCooldownUntil=0` в defaultData+load; `getByUserId`, `modifyByUserId` (online cache + offline DS)                             |
+| `Server/MissionService.lua`    | bug fix `def.name`→`def.displayName`; `capturedByUserId` + `ransomPrice=nil` в capture block                                       |
+| `Server/Main.lua`              | +RansomService, ShopService; 4 remotes (SetRansom, PayRansom, BuyMonster, DoQuest) + handlers; `nextQuestAt` в GetPlayerData       |
+| `Client/LabController.lua`     | Panel 600px; jailSlots×3 (TextButton); ransomPanel overlay; shopSection+buySlimeBtn; questBtn с countdown; PayRansom в dispatchBtn |
+
+### Риски регрессии
+
+- Phase 3–5 flow без изменений в логике — проверить dispatch к NPC-дому и PvP поимку.
+- `modifyByUserId` пишет в DS напрямую — не вызывать часто (rate limit DataStore).
+- `ransomPanel` ZIndex=8 перекрывает всё в panel — не должен быть виден при открытом picker.
+
+---
+
+## Предыдущая сессия (2026-06-24) — Phase 5 Defense
+
+### Создано
+
+| Файл                     | Что сделано                                                      |
+| ------------------------ | ---------------------------------------------------------------- |
+| `Server/TrapService.lua` | setCage, hasCage; CAGE_COST=0 (бесплатно), TRAP_CATCH_CHANCE=1.0 |
+
+### Изменено
+
+| Файл                           | Изменение                                                                                                                                      |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Shared/Config.lua`            | `CAGE_COST=0`, `TRAP_CATCH_CHANCE=1.0`                                                                                                         |
+| `Server/PlayerDataService.lua` | `defaultData()` + `load()` — `jail = {}`                                                                                                       |
+| `Server/MissionService.lua`    | `runMission`: capture block (hasCage → Captured + jail insert + FireClient обоим); defender toast перенесён в runMission                       |
+| `Server/Main.lua`              | TrapService, SetTrap remote+handler, GetPlayerData → jail+hasCage                                                                              |
+| `Client/LabController.lua`     | SetTrap remote, defenseSection (cageBtn+jailFrame), updateCageButton, renderJail, Captured case в renderDispatch, evMonsterUpdated рефакторинг |
+
+### Риски регрессии
+
+- Phase 3–4 flow без ловушки не изменён — проверить dispatch к NPC-дому.
+- `picker.Visible` + `defenseSection.Visible` связаны — проверить переход пикер→назад.
 
 ## Последняя сессия (2026-06-22) — Phase 4 PvP Attack
 
@@ -128,4 +215,5 @@ bootstrap/ ServerInit, ClientInit
 | Дата       | Итог                                                                              |
 | ---------- | --------------------------------------------------------------------------------- |
 | 2026-06-21 | Setup, Rojo, Phase 1                                                              |
-| 2026-06-22 | Phase 2 ✅; Phase 3 (dispatch) ✅; глубокий рефактор Phases 0–3; Phase 4 (PvP) ✅ |
+| 2026-06-22 | Phase 2 ✅; Phase 3 ✅; рефактор; Phase 4 (PvP) ✅; Phase 5 (Defense) ✅ |
+| 2026-06-24 | Phase 6 ✅ (выкуп, магазин в лабе, квест); фикс ransom; UX: магазин → Phase 7 |

@@ -48,29 +48,64 @@
 - [x] Server validates + resolves (id=0 обрабатывается отдельно, getMissionPlatform)
 - [x] Уведомление защитнику (toast через MonsterUpdated, без лишнего remote)
 
-## Phase 5 — Defense ← **СЛЕДУЮЩИЙ**
+## Phase 5 — Defense ✅
 
-## Phase 5 — Defense
+- [x] Trap slot + Cage (кнопка в лаборатории, `SetTrap` remote)
+- [x] Catch flow → jail cell (монстр → Captured, в `data.jail` защитника)
+- [x] Toast атакующему «Твой Гуппи пойман!» + защитнику «Поймал Гуппи!»
+- [x] Captured state в UI лаборатории (красная кнопка «Пойман ⛓️»)
+- [x] Клетка нарушителей в UI (список пойманных)
+- [x] `syncPlayerMonsters` не трогает Captured монстров
 
-- [ ] Trap slot + Cage
-- [ ] Defender monster
-- [ ] Catch flow → jail cell
+## Phase 6 — Economy & Jail Ransom ✅
 
-## Phase 6 — Economy & Progression
+- [x] **Выкуп:** захватчик задаёт цену на пленника; владелец платит → монстр `Idle`, убрать из `jail`
+- [x] UI: владелец клетки — «Задать выкуп»; владелец монстра — «Выкупить за 💰 N»
+- [x] Покупка Slime/Гуппи за 50💰 — **логика** (`BuyMonster`); UI пока **в лаборатории** (UX-долг → Phase 7)
+- [x] Базовые **ручные задания** (+25💰, cooldown 120 сек) — UI пока **в лаборатории** (→ Phase 7)
+- [ ] Monster XP + levels, прокачка — **Phase 8+**
+- [ ] Base upgrades — **Phase 8+**
 
-- [ ] Покупка монстров в лаборатории (Gremlin, ShadowRat, Homunculus)
+**Не делали:** авто-освобождение, влом, подчинение, Robux, **отдельный магазин** (отложено в Phase 7).
+
+## Phase 7 — Shop UI + Jail Break ← **СЛЕДУЮЩИЙ**
+
+### 7a — Отдельный магазин (первый шаг)
+
+- [ ] **Отдельное меню «Магазин»** — не в лаборатории (лаба = монстры, отправка, ловушка, клетка, выкуп)
+- [ ] Точка входа на базе: ProximityPrompt / NPC / отдельная зона (placeholder ok)
+- [ ] `ShopController` (или аналог) — покупка монстров, позже Gremlin/Rat
+- [ ] Квест «мелкая работа» — в магазине или рядом (контракты), не в лабе
+- [ ] Убрать `shopSection` + `questBtn` из `LabController`
+- [ ] Bootstrap: `ShopController` после LabController (или по ProximityPrompt, без bootstrap)
+
+### 7b — Jail Break (влом)
+
+- [ ] Пленный монстр **виден в лаборатории/клетке на базе захватчика** (мир + UI)
+- [ ] Владелец может **физически прийти** на чужую базу с **инструментами** освобождения
+- [ ] Ловушки на базе врага при вломе: сработала → **alert захватчику** («влом!»)
+- [ ] Успешное освобождение → монстр возвращается владельцу
+
+## Phase 8 — Subjugation & Progression
+
+- [ ] **Подчинение** пленного монстра захватчиком (механика верности — детали позже)
+- [ ] Если владелец не забрал: захватчик пробует подчинить
+- [ ] **Серверная компенсация** захватчику, если подчинить не вышло
 - [ ] Monster XP + levels, прокачка в лаборатории
 - [ ] Base upgrades
+- [ ] Новые монстры в **магазине**: Gremlin, ShadowRat, Homunculus
 
-## Phase 7 — Polish MVP
+## Phase 8+ — Monetization & Post-MVP
+
+- [ ] **Robux:** мгновенный выкуп монстра владельцем (Developer Product)
+- [ ] **Robux:** принудительное подчинение пленника захватчиком
+- [ ] Аренда, репутация, события, кастомные модели, Soul Eater map, полный донат
+
+## Phase 9 — Polish MVP
 
 - [ ] Balance pass
 - [ ] Bug fixes
 - [ ] UX-полировка (без отдельного туториала)
-
-## Phase 8+ — Post-MVP
-
-Аренда, репутация, события, кастомные модели, Soul Eater map, донат.
 
 ## Как работаем с AI
 
