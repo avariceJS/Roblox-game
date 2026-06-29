@@ -10,6 +10,7 @@
 | ----------------- | ------------------------------------------------------------ |
 | **Фаза**          | Phase 10 ✅ — Robux shop, монетизация                        |
 | **Следующий шаг** | **Phase 11** — финальный баланс, polish, публикация          |
+| **Визуал**        | первый монстр-визуал ✅ `HairboundWraith` (dispatch walker) |
 | **UX-долг**       | нет                                                          |
 | **Блокеры**       | нет                                                          |
 | **Workflow**      | `rojo serve` → Accept → **Stop → Play Solo** / **2 Players** |
@@ -22,7 +23,7 @@
 
 ```
 Продолжаем Rent-a-Monster. Прочитай docs/HANDOFF.md, docs/PROJECT.md, docs/ROADMAP.md, docs/GAME.md.
-Phase 10 — Robux shop, монетизация, финальный баланс. Дай intent-промпт для Claude Code.
+Phase 11 — финальный баланс, polish, публикация. Дай intent-промпт для Claude Code.
 ```
 
 ---
@@ -35,7 +36,7 @@ Phase 10 — Robux shop, монетизация, финальный баланс
 - **Подсветка своей базы** — зелёный диск + Highlight + «▼ ВАШ ОСОБНЯК #N» (`BaseMarkerController`)
 - **Лаборатория** — [E] у капсулы на **своей** базе → UI с монстрами + клетка + выкуп + подчинение; чужая база → toast (`LabController`)
 - **Стартовый монстр** — Slime/Гуппи при первом join (`MonsterService`)
-- **Отправка монстра** — пикер целей → walker-шар (цвет по типу) → лужа (цвет + частицы) → монеты+chaos+XP → Fatigued → Idle; при level up — toast через 1.5 сек
+- **Отправка монстра** — пикер целей → walker (`HairboundWraith` из `Assets`, иначе fallback шар) → walk-анимация на клиенте + tween pivot → лужа → монеты+chaos+XP → Fatigued → Idle; level up toast через 1.5 сек
 - **XP и уровни** — `DISPATCH_XP=10`, `XP_PER_LEVEL=30`; уровень отображается в карточке монстра «Обычный | Ур.N»
 - **4 монстра** — Slime 🐸 / Gremlin 👺 / ShadowRat 🐀 / Homunculus 🧿 в MonsterDefs + ShopController
 - **Защитник** — toast при атаке; ловушка Cage в лаборатории
@@ -62,10 +63,10 @@ Phase 10 — Robux shop, монетизация, финальный баланс
 ### Bootstrap клиента (`ClientInit.client.lua`)
 
 ```
-BaseMarkerController → LabController → HudController
+BaseMarkerController → LabController → ShopController → WalkerAnimController → HudController
 ```
 
-**BaseMarker первым** — иначе гонка с `BaseAssigned`.
+**BaseMarker первым** — иначе гонка с `BaseAssigned`. **WalkerAnimController** — анимация dispatch-walker на клиенте (custom rig).
 
 ### Сервер при join
 
@@ -76,7 +77,7 @@ BaseMarkerController → LabController → HudController
 1. Клиент: `fnDispatch:InvokeServer({ targetBaseId, monsterId })` — targetBaseId=0 для NPC-дома
 2. Сервер: `MissionService.dispatch(player, rawId, requestedId?)` — id=0 обрабатывается отдельно без normalizeId
 3. `getMissionPlatform(targetId)` → NpcHome Part (id=0) или SpawnLocation базы (id≥1)
-4. `task.spawn(runMission)` → walker-шар → лужа → coins+chaos → toast атакующему → toast защитнику → Fatigued → scheduleFatigueRecovery
+4. `task.spawn(runMission)` → `createWalker` (клон `Assets.Monsters.HairboundWraith` + атрибуты Target/TravelTime) → клиент `WalkerAnimController` → лужа → coins+chaos → toasts → Fatigued → scheduleFatigueRecovery
 
 ### Пикер целей (LabController)
 
@@ -89,7 +90,7 @@ BaseMarkerController → LabController → HudController
 ```
 Server/   Main, BaseMapService, BaseService, NpcService, PlayerDataService, MonsterService, LabService, MissionService, TrapService, RansomService, ShopService, ShopMapService, JailMapService, JailBreakService, SubjugationService
 Shared/   Config, BaseUtil, MonsterDefs, MonsterDisplay
-Client/   BaseMarkerController, LabController, ShopController, HudController, UiUtil
+Client/   BaseMarkerController, LabController, ShopController, WalkerAnimController, HudController, UiUtil
 bootstrap/ ServerInit, ClientInit
 ```
 
@@ -114,27 +115,37 @@ bootstrap/ ServerInit, ClientInit
 15. **`SubjugationService.attemptSubjugate(capturer, monsterId)`** — ищет запись в `capturer.jail`; 50% шанс; провал × 3 → авто-компенсация 30💰 + удаление монстра у обоих.
 16. **`baseUpgrades`** в DataStore; `reinforcedTrap=true` → 40% ловушка в JailBreakService; отображается в ShopController как «куплено».
 17. **`monster.xp/level`** — `MissionService.runMission` начисляет XP; level up toast через 1.5 сек; `MonsterDisplay.fill` показывает «Обычный | Ур.N».
+18. **Dispatch walker-визуал** — модель только в Studio: `ReplicatedStorage.Assets.Monsters.HairboundWraith` (не в git). Внутри: `AnimationController` → `Animator`, `Animation` `Walk` с валидным `AnimationId`. Анимация **должна** быть с того же Mixamo-экспорта, что и rig (With Skin). Иначе `Play()` без движения костей.
+19. **`WalkerAnimController`** — слушает `Workspace.Missions` ChildAdded; ищет `Walk` в модели (fallback `Config.WALKER_WRAITH_ANIM_ID`). Сервер не твинит кости — только атрибуты цели.
+
+### Pipeline монстра (Studio, не Rojo)
+
+Meshy → remesh ~10K → Mixamo auto-rig → анимация **FBX With Skin** (один файл) → Import → `Animation` + `AnimationId` внутрь модели → `Assets.Monsters`.
 
 ---
 
-## Последняя сессия (Cursor, 2026-06-24) — контекст + Phase 6 polish
+## Последняя сессия (2026-06-28) — визуал dispatch walker
 
-### Сделано в этом чате (Cursor + мелкие правки кода)
+### Сделано
 
-| Тема           | Итог                                                                                                       |
-| -------------- | ---------------------------------------------------------------------------------------------------------- |
-| Phase 3 polish | 🌀 chaos в HUD; выбор монстра → «Отправить»; таймер fatigue; убрана карточка снизу (MonsterCardController) |
-| Fatigue bug    | `syncPlayerMonsters` при join — таймер не переживал Stop→Play                                              |
-| Phase 4–6      | Intent-промпты для Claude Code; GAME.md — логика плена без авто-освобождения                               |
-| PvP toast      | Уведомление защитнику **при отправке**, не после пакости; убран дубль toast (только HudController)         |
-| Studio QA      | `STUDIO_WALK_SPEED` в Config + BaseService                                                                 |
-| Выкуп bug      | «Нет данных о захватчике» — fallback `capturedByUserId` через jail / base occupant                         |
-| Phase 6 ✅     | Выкуп, покупка Slime, квест — проверено 2 Players (Claude Code)                                            |
-| UX-решение     | Магазин **не должен** быть в лаборатории → **Phase 7, первый шаг**                                         |
+| Тема | Итог |
+| ---- | ---- |
+| Тест-монстр | `HairboundWraith` (Meshy + Mixamo Walking With Skin) |
+| Dispatch | `MissionService.createWalker` клонирует модель из Assets; fallback — neon-шар |
+| Анимация | `WalkerAnimController` — walk на клиенте + tween `PivotTo` по атрибутам |
+| Баг rig | Руки не двигались: AnimationId от **другого** Mixamo-экспорта → исправлено парой model+anim из одного FBX |
+| Проверка | Command Bar + dispatch в Play Solo — работает |
 
-### Phase 6 (Claude Code) — уже в коде
+### Решения
 
-См. таблицы ниже (RansomService, ShopService, remotes SetRansom/PayRansom/BuyMonster/DoQuest).
+- `InitialPoses` / `KeyframeSequence` — не playable; нужен объект `Animation` с `AnimationId`.
+- Custom NPC rig → анимация на **клиенте**, не Humanoid на сервере.
+- Шаблон для следующих монстров: тот же pipeline + имя `Walk` внутри модели.
+
+### Нюансы
+
+- `Config.WALKER_WRAITH_ANIM_ID` — запасной fallback; рабочий id в Studio на объекте `Walk` (`80493925805577`). Можно синхронизировать Config при желании.
+- Сейчас **все** dispatch используют одну модель `HairboundWraith` (не по типу монстра) — ок для MVP-визуала.
 
 ---
 
@@ -222,4 +233,4 @@ bootstrap/ ServerInit, ClientInit
 | 2026-06-21 | Setup, Rojo, Phase 1                                                                                                   |
 | 2026-06-22 | Phase 2 ✅; Phase 3 ✅; рефактор; Phase 4 (PvP) ✅; Phase 5 (Defense) ✅                                               |
 | 2026-06-24 | Phase 6 ✅ (выкуп, магазин в лабе, квест); фикс ransom; UX: магазин → Phase 7                                          |
-| 2026-06-28 | Phase 7–8 ✅ (влом, подчинение, XP/уровни, 4 монстра, upgradeShop); Phase 9 ✅ (balance + UX-polish + VFX + bug fixes) |
+| 2026-06-28 | Phase 7–10 ✅ (магазин, влом, подчинение, XP, Robux); Phase 9 polish; **HairboundWraith** dispatch-визуал + WalkerAnimController |

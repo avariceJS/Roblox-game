@@ -41,6 +41,7 @@ return {
 	GAMEPASS_EXTRA_SLOT     = 0,
 	VIP_BONUS               = 0.1,
 	MAX_MONSTERS            = 4,
+	WALKER_WRAITH_ANIM_ID   = "rbxassetid://107849126733386",
 
 	NPC_HOME_ID       = 0,
 	NPC_HOME_POSITION = Vector3.new(90, 0.5, 35),

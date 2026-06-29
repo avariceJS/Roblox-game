@@ -94,17 +94,35 @@ function MissionService.syncPlayerMonsters(player: Player)
 	end
 end
 
-local function createWalker(from: Vector3, monsterType: string): Part
+local function createWalker(from: Vector3, monsterType: string): (Instance, Instance)
+	local rs = game:GetService("ReplicatedStorage")
+	local assetsFolder = rs:FindFirstChild("Assets")
+	local template = assetsFolder
+		and assetsFolder:FindFirstChild("Monsters")
+		and assetsFolder.Monsters:FindFirstChild("HairboundWraith")
+
+	if template and template:IsA("Model") then
+		local clone = template:Clone()
+		for _, part in clone:GetDescendants() do
+			if part:IsA("BasePart") then
+				part.CanCollide = false
+			end
+		end
+		clone:PivotTo(CFrame.new(from))
+		clone.Parent = _missionsFolder
+		return clone, clone
+	end
+
 	local p = Instance.new("Part")
-	p.Shape       = Enum.PartType.Ball
-	p.Size        = Vector3.new(1.4, 1.4, 1.4)
-	p.CFrame      = CFrame.new(from)
-	p.Anchored    = true
-	p.CanCollide  = false
-	p.Material    = Enum.Material.Neon
-	p.Color       = WALKER_COLORS[monsterType] or Color3.fromRGB(80, 220, 80)
-	p.Parent      = _missionsFolder
-	return p
+	p.Shape      = Enum.PartType.Ball
+	p.Size       = Vector3.new(1.4, 1.4, 1.4)
+	p.CFrame     = CFrame.new(from)
+	p.Anchored   = true
+	p.CanCollide = false
+	p.Material   = Enum.Material.Neon
+	p.Color      = WALKER_COLORS[monsterType] or Color3.fromRGB(80, 220, 80)
+	p.Parent     = _missionsFolder
+	return p, p
 end
 
 local function createPuddle(pos: Vector3, monsterType: string): (Part, RBXScriptConnection)
@@ -167,15 +185,22 @@ local function runMission(player: Player, monsterId: string, targetId: number)
 	local srcPos = srcSpawn.Position + Vector3.new(0, srcSpawn.Size.Y * 0.5 + 3, 0)
 	local tgtPos = tgtPlatform.Position + Vector3.new(0, tgtPlatform.Size.Y * 0.5 + 3, 0)
 
-	local walker = createWalker(srcPos, monsterType)
-	TweenService:Create(
-		walker,
-		TweenInfo.new(Config.TRAVEL_TIME, Enum.EasingStyle.Linear),
-		{ CFrame = CFrame.new(tgtPos) }
-	):Play()
-
-	task.wait(Config.TRAVEL_TIME)
-	if walker.Parent then walker:Destroy() end
+	local walkerPart, walkerRoot = createWalker(srcPos, monsterType)
+	if walkerRoot:IsA("Model") then
+		walkerRoot:SetAttribute("TargetX", tgtPos.X)
+		walkerRoot:SetAttribute("TargetY", tgtPos.Y)
+		walkerRoot:SetAttribute("TargetZ", tgtPos.Z)
+		walkerRoot:SetAttribute("TravelTime", Config.TRAVEL_TIME)
+		task.wait(Config.TRAVEL_TIME)
+	else
+		TweenService:Create(
+			walkerPart,
+			TweenInfo.new(Config.TRAVEL_TIME, Enum.EasingStyle.Linear),
+			{ CFrame = CFrame.new(tgtPos) }
+		):Play()
+		task.wait(Config.TRAVEL_TIME)
+	end
+	if walkerRoot.Parent then walkerRoot:Destroy() end
 
 	if not player.Parent then return end
 
