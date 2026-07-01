@@ -34,8 +34,8 @@ overlay.Visible                = false
 overlay.Parent                 = gui
 
 local panel = Instance.new("Frame")
-panel.Size                   = UDim2.new(0, 360, 0, 722)
-panel.Position               = UDim2.new(0.5, -180, 0.5, -361)
+panel.Size                   = UDim2.new(0, 360, 0, 774)
+panel.Position               = UDim2.new(0.5, -180, 0.5, -387)
 panel.BackgroundColor3       = Color3.fromRGB(18, 18, 28)
 panel.BackgroundTransparency = 0.08
 panel.BorderSizePixel        = 0
@@ -194,7 +194,22 @@ wall2Btn.Active                 = true
 wall2Btn.Parent                 = panel
 UiUtil.corner(wall2Btn, 8)
 
-local yAfterUpgrade = yAfterQuest + 146 + 14
+local jeepBtn = Instance.new("TextButton")
+jeepBtn.Size                   = UDim2.new(1, -32, 0, 44)
+jeepBtn.Position               = UDim2.new(0, 16, 0, yAfterQuest + 144)
+jeepBtn.BackgroundColor3       = Color3.fromRGB(35, 50, 35)
+jeepBtn.BackgroundTransparency = 0.15
+jeepBtn.BorderSizePixel        = 0
+jeepBtn.Text                   = "🚙 Jeep  0💰"
+jeepBtn.TextColor3             = Color3.fromRGB(160, 220, 130)
+jeepBtn.TextScaled             = true
+jeepBtn.Font                   = Enum.Font.GothamBold
+jeepBtn.AutoButtonColor        = true
+jeepBtn.Active                 = true
+jeepBtn.Parent                 = panel
+UiUtil.corner(jeepBtn, 8)
+
+local yAfterUpgrade = yAfterQuest + 198 + 14
 
 local divider4 = Instance.new("Frame")
 divider4.Size             = UDim2.new(1, -32, 0, 1)
@@ -261,6 +276,7 @@ local showToast = UiUtil.makeToast(gui, UDim2.new(0.5, -200, 0, 72), 400)
 local nextQuestAt: number = 0
 local hasReinforcedTrap: boolean = false
 local hasWall2Build: boolean = false
+local hasJeepBuild: boolean = false
 local currentCoins: number = 0
 local ownedMonsterTypes: { [string]: boolean } = {}
 local hasVip: boolean = false
@@ -377,6 +393,22 @@ local function updateWall2Btn()
 	end
 end
 
+local function updateJeepBtn()
+	if hasJeepBuild then
+		jeepBtn.Active           = true
+		jeepBtn.AutoButtonColor  = true
+		jeepBtn.BackgroundColor3 = Color3.fromRGB(70, 35, 35)
+		jeepBtn.TextColor3       = Color3.fromRGB(255, 180, 180)
+		jeepBtn.Text             = "🚙 Jeep — Продать"
+	else
+		jeepBtn.Active           = true
+		jeepBtn.AutoButtonColor  = true
+		jeepBtn.BackgroundColor3 = Color3.fromRGB(35, 50, 35)
+		jeepBtn.TextColor3       = Color3.fromRGB(160, 220, 130)
+		jeepBtn.Text             = "🚙 Jeep  0💰"
+	end
+end
+
 local function startTickIfNeeded()
 	stopTick()
 	if not overlay.Visible then return end
@@ -400,6 +432,7 @@ local function setOpen(isOpen: boolean)
 		updateQuestBtn()
 		updateUpgradeBtn()
 		updateWall2Btn()
+		updateJeepBtn()
 		updateMonsterButtons()
 		updatePremiumButtons()
 		startTickIfNeeded()
@@ -421,6 +454,7 @@ local function openShop(shopBaseId: any)
 	nextQuestAt       = data.nextQuestAt or 0
 	hasReinforcedTrap = (data.upgrades or {}).reinforcedTrap == true
 	hasWall2Build     = (data.upgrades or {}).wall2 == true
+	hasJeepBuild      = (data.upgrades or {}).jeep == true
 	currentCoins      = data.coins or 0
 	hasVip            = data.hasVip or false
 	hasExtraSlot      = data.hasExtraSlot or false
@@ -479,6 +513,27 @@ wall2Btn.MouseButton1Click:Connect(function()
 	if result and result.ok then
 		hasWall2Build = true
 		updateWall2Btn()
+	else
+		showToast((result and result.message) or "Ошибка покупки")
+	end
+end)
+
+jeepBtn.MouseButton1Click:Connect(function()
+	if not jeepBtn.Active then return end
+	if hasJeepBuild then
+		local result = fnBuyUpgrade:InvokeServer({ upgradeKey = "jeep", sell = true })
+		if result and result.ok then
+			hasJeepBuild = false
+			updateJeepBtn()
+		else
+			showToast((result and result.message) or "Ошибка продажи")
+		end
+		return
+	end
+	local result = fnBuyUpgrade:InvokeServer({ upgradeKey = "jeep" })
+	if result and result.ok then
+		hasJeepBuild = true
+		updateJeepBtn()
 	else
 		showToast((result and result.message) or "Ошибка покупки")
 	end
@@ -553,9 +608,11 @@ evMonsterUpdated.OnClientEvent:Connect(function(payload)
 	if payload.upgrades ~= nil then
 		hasReinforcedTrap = payload.upgrades.reinforcedTrap == true
 		hasWall2Build     = payload.upgrades.wall2 == true
+		hasJeepBuild      = payload.upgrades.jeep == true
 		if overlay.Visible then
 			updateUpgradeBtn()
 			updateWall2Btn()
+			updateJeepBtn()
 		end
 	end
 	if payload.hasVip ~= nil then

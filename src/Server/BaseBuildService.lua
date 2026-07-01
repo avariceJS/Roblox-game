@@ -185,8 +185,16 @@ function BaseBuildService.apply(baseId: number, buildKey: string): (boolean, str
 	end
 	local clone = template:Clone()
 	clone.Name = buildKey
-	anchorModel(clone)
-	applySlotAppearance(slotPart, clone)
+	if def.drivable then
+		for _, part in clone:GetDescendants() do
+			if part:IsA("BasePart") then
+				part.CanCollide = true
+			end
+		end
+	else
+		anchorModel(clone)
+		applySlotAppearance(slotPart, clone)
+	end
 	clone:PivotTo(slotCf)
 	clone.Parent = installed
 	hideSlotPart(slotPart)

@@ -5,4 +5,11 @@ return {
 		displayName = "Вторая стенка",
 		emoji       = "🧱",
 	},
+	jeep = {
+		template    = "Jeep",
+		slot        = "Slot_Jeep",
+		displayName = "Jeep",
+		emoji       = "🚙",
+		drivable    = true,
+	},
 }

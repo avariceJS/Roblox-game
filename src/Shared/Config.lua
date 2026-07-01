@@ -31,7 +31,7 @@ return {
 	SUBJUGATE_ATTEMPTS_MAX = 3,
 	SUBJUGATE_COMPENSATION = 30,
 
-	UPGRADE_PRICES        = { reinforcedTrap = 150, wall2 = 0 },
+	UPGRADE_PRICES        = { reinforcedTrap = 150, wall2 = 0, jeep = 0 },
 	REINFORCED_TRAP_CATCH = 0.4,
 
 	PRODUCT_INSTANT_RANSOM  = 0,
