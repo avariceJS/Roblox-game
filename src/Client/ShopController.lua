@@ -34,8 +34,8 @@ overlay.Visible                = false
 overlay.Parent                 = gui
 
 local panel = Instance.new("Frame")
-panel.Size                   = UDim2.new(0, 360, 0, 670)
-panel.Position               = UDim2.new(0.5, -180, 0.5, -335)
+panel.Size                   = UDim2.new(0, 360, 0, 722)
+panel.Position               = UDim2.new(0.5, -180, 0.5, -361)
 panel.BackgroundColor3       = Color3.fromRGB(18, 18, 28)
 panel.BackgroundTransparency = 0.08
 panel.BorderSizePixel        = 0
@@ -179,7 +179,22 @@ upgradeBtn.Active                 = true
 upgradeBtn.Parent                 = panel
 UiUtil.corner(upgradeBtn, 8)
 
-local yAfterUpgrade = yAfterQuest + 80 + 14
+local wall2Btn = Instance.new("TextButton")
+wall2Btn.Size                   = UDim2.new(1, -32, 0, 44)
+wall2Btn.Position               = UDim2.new(0, 16, 0, yAfterQuest + 92)
+wall2Btn.BackgroundColor3       = Color3.fromRGB(55, 45, 35)
+wall2Btn.BackgroundTransparency = 0.15
+wall2Btn.BorderSizePixel        = 0
+wall2Btn.Text                   = "🧱 Вторая стенка  0💰"
+wall2Btn.TextColor3             = Color3.fromRGB(220, 200, 160)
+wall2Btn.TextScaled             = true
+wall2Btn.Font                   = Enum.Font.GothamBold
+wall2Btn.AutoButtonColor        = true
+wall2Btn.Active                 = true
+wall2Btn.Parent                 = panel
+UiUtil.corner(wall2Btn, 8)
+
+local yAfterUpgrade = yAfterQuest + 146 + 14
 
 local divider4 = Instance.new("Frame")
 divider4.Size             = UDim2.new(1, -32, 0, 1)
@@ -245,6 +260,7 @@ local showToast = UiUtil.makeToast(gui, UDim2.new(0.5, -200, 0, 72), 400)
 
 local nextQuestAt: number = 0
 local hasReinforcedTrap: boolean = false
+local hasWall2Build: boolean = false
 local currentCoins: number = 0
 local ownedMonsterTypes: { [string]: boolean } = {}
 local hasVip: boolean = false
@@ -345,6 +361,22 @@ local function updateUpgradeBtn()
 	end
 end
 
+local function updateWall2Btn()
+	if hasWall2Build then
+		wall2Btn.Active           = true
+		wall2Btn.AutoButtonColor  = true
+		wall2Btn.BackgroundColor3 = Color3.fromRGB(70, 35, 35)
+		wall2Btn.TextColor3       = Color3.fromRGB(255, 180, 180)
+		wall2Btn.Text             = "🧱 Вторая стенка — Продать"
+	else
+		wall2Btn.Active           = true
+		wall2Btn.AutoButtonColor  = true
+		wall2Btn.BackgroundColor3 = Color3.fromRGB(55, 45, 35)
+		wall2Btn.TextColor3       = Color3.fromRGB(220, 200, 160)
+		wall2Btn.Text             = "🧱 Вторая стенка  0💰"
+	end
+end
+
 local function startTickIfNeeded()
 	stopTick()
 	if not overlay.Visible then return end
@@ -367,6 +399,7 @@ local function setOpen(isOpen: boolean)
 	else
 		updateQuestBtn()
 		updateUpgradeBtn()
+		updateWall2Btn()
 		updateMonsterButtons()
 		updatePremiumButtons()
 		startTickIfNeeded()
@@ -387,6 +420,7 @@ local function openShop(shopBaseId: any)
 	end
 	nextQuestAt       = data.nextQuestAt or 0
 	hasReinforcedTrap = (data.upgrades or {}).reinforcedTrap == true
+	hasWall2Build     = (data.upgrades or {}).wall2 == true
 	currentCoins      = data.coins or 0
 	hasVip            = data.hasVip or false
 	hasExtraSlot      = data.hasExtraSlot or false
@@ -426,6 +460,27 @@ upgradeBtn.MouseButton1Click:Connect(function()
 		updateUpgradeBtn()
 	else
 		showToast((result and result.message) or "Ошибка покупки апгрейда")
+	end
+end)
+
+wall2Btn.MouseButton1Click:Connect(function()
+	if not wall2Btn.Active then return end
+	if hasWall2Build then
+		local result = fnBuyUpgrade:InvokeServer({ upgradeKey = "wall2", sell = true })
+		if result and result.ok then
+			hasWall2Build = false
+			updateWall2Btn()
+		else
+			showToast((result and result.message) or "Ошибка продажи")
+		end
+		return
+	end
+	local result = fnBuyUpgrade:InvokeServer({ upgradeKey = "wall2" })
+	if result and result.ok then
+		hasWall2Build = true
+		updateWall2Btn()
+	else
+		showToast((result and result.message) or "Ошибка покупки")
 	end
 end)
 
@@ -497,8 +552,10 @@ evMonsterUpdated.OnClientEvent:Connect(function(payload)
 	end
 	if payload.upgrades ~= nil then
 		hasReinforcedTrap = payload.upgrades.reinforcedTrap == true
+		hasWall2Build     = payload.upgrades.wall2 == true
 		if overlay.Visible then
 			updateUpgradeBtn()
+			updateWall2Btn()
 		end
 	end
 	if payload.hasVip ~= nil then

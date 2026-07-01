@@ -8,22 +8,36 @@
 
 |                   |                                                              |
 | ----------------- | ------------------------------------------------------------ |
-| **Фаза**          | Phase 10 ✅ — Robux shop, монетизация                        |
-| **Следующий шаг** | **Phase 11** — финальный баланс, polish, публикация          |
-| **Визуал**        | первый монстр-визуал ✅ `HairboundWraith` (dispatch walker) |
-| **UX-долг**       | нет                                                          |
+| **Фаза**          | **Phase 12** — книга улучшений базы (см. `ROADMAP.md`)       |
+| **Геймплей**      | Phases 0–10 ✅                                               |
+| **Следующий шаг** | Studio: шаблоны в `Assets.BaseUpgrades` + слоты на Mansion_3 |
+| **Визуал карты**  | Map V2 особняк — параллельно, не блокирует книгу             |
 | **Блокеры**       | нет                                                          |
-| **Workflow**      | `rojo serve` → Accept → **Stop → Play Solo** / **2 Players** |
+| **Workflow**      | Cursor — консультация; код Phase 12b — Claude Code           |
 
-### Дизайн после поимки (зафиксировано)
+### Решение (2026-06-29) — прокачка базы
 
-Полная логика: **`GAME.md` → «Пойманный монстр»**. Кратко: выкуп (Phase 6 ✅) → влом (Phase 7) → подчинение / компенсация (Phase 8) → Robux (8+). **Нет освобождения через 5 мин.**
+- **Не** зелёные тайкон-плитки.
+- **Книга** в особняке: картинки улучшений, цена, «Купить» → сервер списывает → на базе появляется часть здания (фиксированный слот).
+- **Магазин** (слева) — позже: ловушки, камеры; игрок **сам ставит** на дворе (Phase 13).
+- **Вариант B (прод):** шаблоны в `Assets`, на базе только слоты; код `Clone` по DataStore — без скрытых копий ×6.
+- Лаборатория = монстры; книга = только улучшения здания.
 
-### Как продолжить
+Полный текст: `GAME.md` → «Прокачка» + «вариант B».
+
+### Шаг 1 — Studio (вариант B)
+
+1. `ReplicatedStorage` → `Assets` → папка **`BaseUpgrades`** → три Model: `Fence`, `Floor2`, `RestRoom`.
+2. На `Map/Mansions/Mansion_3` → папка **`UpgradeSlots`** → Part-якоря `Slot_Fence`, `Slot_Floor2`, `Slot_RestRoom` (маленькие, `Transparency=1`, `CanCollide=false`).
+3. **Один раз:** Clone `Fence` → поставь на `Slot_Fence` → подгони шаблон в Assets → **удали клон** с карты.
+4. Книга в особняке (Toolbox).
+5. Save to Roblox → скрин Explorer + вид сверху.
+
+### Как продолжить (чат)
 
 ```
-Продолжаем Rent-a-Monster. Прочитай docs/HANDOFF.md, docs/PROJECT.md, docs/ROADMAP.md, docs/GAME.md.
-Phase 11 — финальный баланс, polish, публикация. Дай intent-промпт для Claude Code.
+Продолжаем Rent-a-Monster — книга улучшений базы. Прочитай HANDOFF, ROADMAP Phase 12, GAME.md (книга).
+Консультируй по Studio; код — когда заглушки на Base3 готовы.
 ```
 
 ---
@@ -233,4 +247,5 @@ Meshy → remesh ~10K → Mixamo auto-rig → анимация **FBX With Skin**
 | 2026-06-21 | Setup, Rojo, Phase 1                                                                                                   |
 | 2026-06-22 | Phase 2 ✅; Phase 3 ✅; рефактор; Phase 4 (PvP) ✅; Phase 5 (Defense) ✅                                               |
 | 2026-06-24 | Phase 6 ✅ (выкуп, магазин в лабе, квест); фикс ransom; UX: магазин → Phase 7                                          |
-| 2026-06-28 | Phase 7–10 ✅ (магазин, влом, подчинение, XP, Robux); Phase 9 polish; **HairboundWraith** dispatch-визуал + WalkerAnimController |
+| 2026-06-28 | Phase 7–10 ✅; HairboundWraith; фокус → Visual Map |
+| 2026-06-29 | Дизайн: книга + магазин с расстановкой; **прокачка вариант B** (Assets + Clone); Phase 12–13 |

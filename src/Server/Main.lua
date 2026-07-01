@@ -22,8 +22,11 @@ local JailBreakService      = require(Server.JailBreakService)
 local SubjugationService    = require(Server.SubjugationService)
 local MonetizationService   = require(Server.MonetizationService)
 local BaseUtil              = require(Shared.BaseUtil)
+local BaseBuildDefs         = require(Shared.BaseBuildDefs)
+local BaseBuildService      = require(Server.BaseBuildService)
 
 BaseMapService.ensure()
+BaseBuildService.prepareMap()
 NpcService.init()
 ShopMapService.init()
 JailMapService.init()
@@ -203,7 +206,7 @@ fnAttemptSubjugate.OnServerInvoke = function(player: Player, payload: { monsterI
 	return SubjugationService.attemptSubjugate(player, payload.monsterId)
 end
 
-fnBuyUpgrade.OnServerInvoke = function(player: Player, payload: { upgradeKey: string? })
+fnBuyUpgrade.OnServerInvoke = function(player: Player, payload: { upgradeKey: string?, sell: boolean? })
 	local data = PlayerDataService.get(player)
 	if not data then
 		return { ok = false, message = "Данные не загружены" }
@@ -211,6 +214,12 @@ fnBuyUpgrade.OnServerInvoke = function(player: Player, payload: { upgradeKey: st
 	local key = payload and payload.upgradeKey
 	if not key then
 		return { ok = false, message = "Неверный апгрейд" }
+	end
+	if BaseBuildDefs[key] then
+		if payload.sell == true then
+			return BaseBuildService.sell(player, data, key, evMonsterUpdated)
+		end
+		return BaseBuildService.purchase(player, data, key, evMonsterUpdated)
 	end
 	local price = Config.UPGRADE_PRICES[key]
 	if not price then
@@ -313,6 +322,7 @@ local function onPlayerAdded(player: Player)
 	end
 
 	BaseService.setupSpawn(player, data.baseId)
+	BaseBuildService.syncForPlayer(player, data)
 	MissionService.syncPlayerMonsters(player)
 	task.spawn(MonetizationService.checkGamePasses, player, data)
 
