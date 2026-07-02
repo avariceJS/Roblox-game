@@ -81,7 +81,9 @@ function LabService.init()
 	for baseId = 1, Config.BASE_COUNT do
 		local floorPos = BaseUtil.getLabFloorPos(baseId)
 		if not floorPos then
-			warn("[LabService] Missing base", baseId)
+			if not Config.STUDIO_MAP_MODE then
+				warn("[LabService] Missing base", baseId)
+			end
 			continue
 		end
 		buildCapsule(floorPos, baseId).Parent = folder

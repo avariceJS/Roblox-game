@@ -56,7 +56,9 @@ function JailMapService.init()
 	for baseId = 1, Config.BASE_COUNT do
 		local pos = BaseUtil.getJailFloorPos(baseId)
 		if not pos then
-			warn("[JailMapService] Missing base", baseId)
+			if not Config.STUDIO_MAP_MODE then
+				warn("[JailMapService] Missing base", baseId)
+			end
 			continue
 		end
 		buildJailObject(pos, baseId).Parent = folder

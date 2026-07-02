@@ -18,6 +18,7 @@ return {
 	SLOW_DURATION        = 4,
 	LAB_PROMPT_DISTANCE  = 14,
 	STUDIO_WALK_SPEED    = 64,
+	STUDIO_MAP_MODE      = true,
 	CAGE_COST           = 0,
 	TRAP_CATCH_CHANCE   = 1.0,
 

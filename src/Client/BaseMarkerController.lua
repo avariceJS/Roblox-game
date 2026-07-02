@@ -1,5 +1,3 @@
-local TweenService = game:GetService("TweenService")
-
 local BaseUtil = require(game.ReplicatedStorage.src.Shared.BaseUtil)
 
 local Remotes = game.ReplicatedStorage:WaitForChild("src"):WaitForChild("Remotes")
@@ -19,38 +17,8 @@ local function buildMarker(baseId: number, platform: BasePart)
 	folder.Parent = workspace
 	markerFolder = folder
 
-	local highlight = Instance.new("Highlight")
-	highlight.Adornee = platform
-	highlight.FillColor = Color3.fromRGB(50, 255, 80)
-	highlight.FillTransparency = 0.55
-	highlight.OutlineColor = Color3.fromRGB(100, 255, 120)
-	highlight.OutlineTransparency = 0
-	highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-	highlight.Parent = folder
-
 	local topY = platform.Position.Y + platform.Size.Y * 0.5
 	local center = Vector3.new(platform.Position.X, topY, platform.Position.Z)
-	local diameter = math.max(platform.Size.X, platform.Size.Z) + 4
-
-	local disc = Instance.new("Part")
-	disc.Name = "BaseMarkerDisc"
-	disc.Shape = Enum.PartType.Cylinder
-	disc.Size = Vector3.new(0.5, diameter, diameter)
-	disc.CFrame = CFrame.new(center + Vector3.new(0, 0.35, 0)) * CFrame.Angles(0, 0, math.pi / 2)
-	disc.Anchored = true
-	disc.CanCollide = false
-	disc.CanQuery = false
-	disc.CastShadow = false
-	disc.Material = Enum.Material.Neon
-	disc.Color = Color3.fromRGB(50, 255, 80)
-	disc.Transparency = 0.15
-	disc.Parent = folder
-
-	TweenService:Create(
-		disc,
-		TweenInfo.new(1.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
-		{ Transparency = 0.45 }
-	):Play()
 
 	local anchor = Instance.new("Part")
 	anchor.Size = Vector3.new(0.05, 0.05, 0.05)

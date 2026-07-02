@@ -4,7 +4,6 @@ local RunService             = game:GetService("RunService")
 local MarketplaceService     = game:GetService("MarketplaceService")
 
 local UiUtil   = require(script.Parent.UiUtil)
-local BaseUtil = require(game.ReplicatedStorage.src.Shared.BaseUtil)
 local Config   = require(game.ReplicatedStorage.src.Shared.Config)
 
 local localPlayer = Players.LocalPlayer
@@ -439,16 +438,10 @@ local function setOpen(isOpen: boolean)
 	end
 end
 
-local function openShop(shopBaseId: any)
-	local shopId = BaseUtil.normalizeId(shopBaseId)
-	local data   = fnGetData:InvokeServer()
+local function openShop()
+	local data = fnGetData:InvokeServer()
 	if not data or not data.ok then
 		showToast((data and data.message) or "Не удалось загрузить данные")
-		return
-	end
-	local myId = BaseUtil.normalizeId(data.baseId)
-	if not shopId or not myId or myId ~= shopId then
-		showToast("Это чужой магазин — только на своей базе")
 		return
 	end
 	nextQuestAt       = data.nextQuestAt or 0
@@ -581,9 +574,7 @@ end)
 
 ProximityPromptService.PromptTriggered:Connect(function(prompt: ProximityPrompt, player: Player)
 	if player ~= localPlayer or prompt.Name ~= "ShopPrompt" then return end
-	local model = prompt:FindFirstAncestorWhichIsA("Model")
-	if not model then return end
-	openShop(model:GetAttribute("BaseId"))
+	openShop()
 end)
 
 evMonsterUpdated.OnClientEvent:Connect(function(payload)

@@ -3,6 +3,10 @@ local Config = require(game.ReplicatedStorage.src.Shared.Config)
 local BaseMapService = {}
 
 function BaseMapService.ensure()
+	if Config.STUDIO_MAP_MODE then
+		return
+	end
+
 	local old = workspace:FindFirstChild("Bases")
 	if old then
 		old:Destroy()
