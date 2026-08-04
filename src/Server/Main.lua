@@ -23,6 +23,7 @@ local MonetizationService   = require(Server.MonetizationService)
 local BaseUtil              = require(Shared.BaseUtil)
 local BaseBuildDefs         = require(Shared.BaseBuildDefs)
 local BaseBuildService      = require(Server.BaseBuildService)
+local InteriorService       = require(Server.InteriorService)
 
 BaseMapService.ensure()
 BaseBuildService.prepareMap()
@@ -54,14 +55,16 @@ local fnBuyMonster        = ensureRemote("BuyMonster",        "RemoteFunction") 
 local fnDoQuest           = ensureRemote("DoQuest",           "RemoteFunction") :: RemoteFunction
 local fnAttemptJailBreak  = ensureRemote("AttemptJailBreak",   "RemoteFunction") :: RemoteFunction
 local fnAttemptSubjugate  = ensureRemote("AttemptSubjugate",   "RemoteFunction") :: RemoteFunction
-local fnBuyUpgrade           = ensureRemote("BuyUpgrade",           "RemoteFunction") :: RemoteFunction
-local fnSetPurchaseIntent    = ensureRemote("SetPurchaseIntent",    "RemoteFunction") :: RemoteFunction
+local fnBuyUpgrade             = ensureRemote("BuyUpgrade",             "RemoteFunction") :: RemoteFunction
+local fnSetPurchaseIntent      = ensureRemote("SetPurchaseIntent",      "RemoteFunction") :: RemoteFunction
+local fnBuyInteriorUpgrade     = ensureRemote("BuyInteriorUpgrade",     "RemoteFunction") :: RemoteFunction
 
 LabService.init()
 MissionService.init(PlayerDataService, evMonsterUpdated, BaseService)
 JailBreakService.init(evMonsterUpdated)
 SubjugationService.init(evMonsterUpdated)
 MonetizationService.init(PlayerDataService, evMonsterUpdated)
+InteriorService.init(PlayerDataService, evMonsterUpdated)
 
 fnSetTrap.OnServerInvoke = function(player: Player, payload: { active: boolean })
 	local data = PlayerDataService.get(player)
@@ -241,6 +244,18 @@ fnBuyUpgrade.OnServerInvoke = function(player: Player, payload: { upgradeKey: st
 	return { ok = true }
 end
 
+fnBuyInteriorUpgrade.OnServerInvoke = function(player: Player, payload: { key: string? })
+	local data = PlayerDataService.get(player)
+	if not data then
+		return { ok = false, message = "Данные не загружены" }
+	end
+	local key = payload and payload.key
+	if not key then
+		return { ok = false, message = "Неверный сегмент" }
+	end
+	return InteriorService.buyUpgrade(player, data, key, evMonsterUpdated)
+end
+
 fnAttemptJailBreak.OnServerInvoke = function(player: Player, payload: { targetBaseId: number? })
 	local targetBaseId = payload and payload.targetBaseId
 	if not targetBaseId then
@@ -321,6 +336,7 @@ local function onPlayerAdded(player: Player)
 
 	BaseService.setupSpawn(player, data.baseId)
 	BaseBuildService.syncForPlayer(player, data)
+	InteriorService.syncForPlayer(player, data)
 	MissionService.syncPlayerMonsters(player)
 	task.spawn(MonetizationService.checkGamePasses, player, data)
 
