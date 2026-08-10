@@ -45,14 +45,14 @@ return {
 	WALKER_WRAITH_ANIM_ID   = "rbxassetid://107849126733386",
 
 	NPC_HOME_ID       = 0,
-	NPC_HOME_POSITION = Vector3.new(90, 0.5, 35),
+	NPC_HOME_POSITION = Vector3.new(215, 0.5, 35),
 
 	BASE_LAYOUT = {
-		{ id = 1, position = Vector3.new(-45, 0.5, 35), color = Color3.fromRGB(220, 55, 55) },
-		{ id = 2, position = Vector3.new(-22, 0.5, 35), color = Color3.fromRGB(35, 35, 40) },
-		{ id = 3, position = Vector3.new(0, 0.5, 35), color = Color3.fromRGB(235, 235, 235) },
-		{ id = 4, position = Vector3.new(22, 0.5, 35), color = Color3.fromRGB(255, 140, 40) },
-		{ id = 5, position = Vector3.new(45, 0.5, 35), color = Color3.fromRGB(255, 210, 50) },
-		{ id = 6, position = Vector3.new(68, 0.5, 35), color = Color3.fromRGB(55, 120, 255) },
+		{ id = 1, position = Vector3.new(-137.5, 0.5, 35), color = Color3.fromRGB(220, 55, 55) },
+		{ id = 2, position = Vector3.new(-82.5, 0.5, 35), color = Color3.fromRGB(35, 35, 40) },
+		{ id = 3, position = Vector3.new(-27.5, 0.5, 35), color = Color3.fromRGB(235, 235, 235) },
+		{ id = 4, position = Vector3.new(27.5, 0.5, 35), color = Color3.fromRGB(255, 140, 40) },
+		{ id = 5, position = Vector3.new(82.5, 0.5, 35), color = Color3.fromRGB(255, 210, 50) },
+		{ id = 6, position = Vector3.new(137.5, 0.5, 35), color = Color3.fromRGB(55, 120, 255) },
 	},
 }

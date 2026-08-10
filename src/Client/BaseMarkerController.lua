@@ -7,7 +7,50 @@ local evBaseAssigned = Remotes:WaitForChild("BaseAssigned") :: RemoteEvent
 local markerFolder: Folder? = nil
 local activeBaseId: number? = nil
 
-local function buildMarker(baseId: number, platform: BasePart)
+local function findHomeAnchor(baseId: number): BasePart?
+	local map = workspace:FindFirstChild("Map")
+	local roots = { map, workspace }
+	for _, root in ipairs(roots) do
+		if root then
+			for _, inst in ipairs(root:GetDescendants()) do
+				if inst.Name == "HomeDoor" and inst:IsA("BasePart") then
+					local id = BaseUtil.normalizeId(inst:GetAttribute("BaseId"))
+					if id == baseId then
+						return inst
+					end
+				end
+			end
+		end
+	end
+
+	local mansions = map and map:FindFirstChild("Mansions")
+	if mansions then
+		local named = mansions:FindFirstChild("Mansion_" .. baseId)
+		if named then
+			local door = named:FindFirstChild("HomeDoor", true)
+			if door and door:IsA("BasePart") then
+				return door
+			end
+			local part = named:FindFirstChildWhichIsA("BasePart", true)
+			if part then
+				return part
+			end
+		end
+	end
+
+	local build = map and map:FindFirstChild("Build")
+	local edit = build and build:FindFirstChild("MansionEdit")
+	if edit and baseId == 1 then
+		local door = edit:FindFirstChild("HomeDoor", true)
+		if door and door:IsA("BasePart") then
+			return door
+		end
+	end
+
+	return BaseUtil.getSpawn(baseId)
+end
+
+local function buildMarker(baseId: number, anchorPart: BasePart)
 	if markerFolder then
 		markerFolder:Destroy()
 	end
@@ -17,12 +60,13 @@ local function buildMarker(baseId: number, platform: BasePart)
 	folder.Parent = workspace
 	markerFolder = folder
 
-	local topY = platform.Position.Y + platform.Size.Y * 0.5
-	local center = Vector3.new(platform.Position.X, topY, platform.Position.Z)
+	local topY = anchorPart.Position.Y + math.max(anchorPart.Size.Y * 0.5, 4)
+	local center = Vector3.new(anchorPart.Position.X, topY, anchorPart.Position.Z)
 
 	local anchor = Instance.new("Part")
+	anchor.Name = "MarkerAnchor"
 	anchor.Size = Vector3.new(0.05, 0.05, 0.05)
-	anchor.CFrame = CFrame.new(center + Vector3.new(0, 16, 0))
+	anchor.CFrame = CFrame.new(center + Vector3.new(0, 22, 0))
 	anchor.Anchored = true
 	anchor.CanCollide = false
 	anchor.CanQuery = false
@@ -35,7 +79,7 @@ local function buildMarker(baseId: number, platform: BasePart)
 	billboard.Adornee = anchor
 	billboard.Parent = anchor
 
-	local label = Instance.new("TextLabel", billboard)
+	local label = Instance.new("TextLabel")
 	label.Size = UDim2.fromScale(1, 1)
 	label.BackgroundTransparency = 1
 	label.Text = "▼  ВАШ ОСОБНЯК #" .. baseId
@@ -44,6 +88,7 @@ local function buildMarker(baseId: number, platform: BasePart)
 	label.Font = Enum.Font.GothamBold
 	label.TextStrokeTransparency = 0.2
 	label.TextStrokeColor3 = Color3.fromRGB(0, 40, 0)
+	label.Parent = billboard
 end
 
 local function showMarker(baseId: number)
@@ -53,18 +98,16 @@ local function showMarker(baseId: number)
 	activeBaseId = baseId
 
 	task.spawn(function()
-		workspace:WaitForChild("Bases", 30)
-
-		for _ = 1, 40 do
-			local platform = BaseUtil.getSpawn(baseId)
-			if platform then
-				buildMarker(baseId, platform)
+		for _ = 1, 50 do
+			local anchor = findHomeAnchor(baseId)
+			if anchor then
+				buildMarker(baseId, anchor)
 				return
 			end
 			task.wait(0.25)
 		end
 
-		warn("[BaseMarker] Missing platform for base", baseId)
+		warn("[BaseMarker] Нет HomeDoor/дома для базы", baseId)
 	end)
 end
 

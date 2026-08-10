@@ -4,37 +4,49 @@
 
 > Текущий прогресс: **`HANDOFF.md`**. Полный дизайн: **`GAME.md`**. Этапы: **`ROADMAP.md`**.
 
-**Статус:** геймплей MVP (Phases 0–10) — **готов для тестов**, см. `HANDOFF.md`.  
-**Сейчас:** **книга улучшений базы** (дизайн зафиксирован в `GAME.md`) + визуал карты параллельно по желанию.
+**Статус:** Phases 0–10 ✅ · Phase 12 код ✅ · **интерьеры Base1–3 в place работают** · дальше визуал карты.  
+**Сейчас:** открытая карта / дворы / экстерьеры (см. `HANDOFF.md`). Phase 12c можно добить параллельно.  
+Параллельно: Visual Map. Детали: `HANDOFF.md`.
 
 ---
 
-## Phase 12 — Книга улучшений базы ← **следующий геймплей**
+## Phase 12 — Улучшения базы ← **код готов, Studio-проверка**
 
-Дизайн: `GAME.md` → «Прокачка» + **вариант B** (шаблоны в Assets, `Clone` по флагу). Не скрытые копии на всех базах.
+Реализация **разошлась** с ранним дизайном «Fence/Floor2/RestRoom только в книге»:
+
+| Канал | Что | Где в коде |
+| ----- | --- | ---------- |
+| Магазин | двор: `wall2`, `jeep` (+ старый `reinforcedTrap`) | `BaseBuildService`, `BuyUpgrade` |
+| Книга (`BookPrompt`) | интерьер: сегменты в `Map.Interiors` | `InteriorService`, `BuyInteriorUpgrade` |
+| Режим карты | `Config.STUDIO_MAP_MODE = true` | не procedural `Bases` |
+
+Дизайн-намерение: `GAME.md` → «Прокачка». Ожидания place: `HANDOFF.md`.
 
 ### 12a — Studio
 
-- [ ] `ReplicatedStorage.Assets.BaseUpgrades` — модели `Fence`, `Floor2`, `RestRoom`
-- [ ] На **каждом** `Map/Mansions/Mansion_N` — папка `UpgradeSlots` с Part-якорями (без мешей улучшений)
-- [ ] Выровнять слоты на Base3: клон из Assets → слот → правка шаблона → убрать клон
-- [ ] Книга в особняке (объект под будущий `[E]`)
+- [ ] `Assets.BaseUpgrades` — `Wall2`, `Jeep` (не обязательно старые Fence/Floor2/RestRoom)
+- [ ] Особняк: `UpgradeSlots` → `Slot_Wall2`, `Slot_Jeep`
+- [ ] `Map.Interiors/Interior_BaseN` + `Segments` + blockers + `Spawn` (Base1–3 уже есть)
+- [ ] Prompts: `HomePrompt`, `ExitPrompt`, `BookPrompt` (+ свои Lab/Shop/Jail)
+- [ ] `Workspace.Bases` с `BaseId` (код при `STUDIO_MAP_MODE` не создаёт плиты)
+- [ ] Экстерьеры: MansionEdit (Lv1), Mansion_2 Gothic, Mansion_3 (клон → заменить)
 
-### 12b — Код (Claude Code)
+### 12b — Код ✅
 
-- [ ] DataStore: список id купленных улучшений (`baseBook` / `baseUpgrades`)
-- [ ] Каталог в Shared (id, цена, prerequisite, templateName, slotName)
-- [ ] При join + после покупки: `applyBaseUpgrades(baseId, ownedIds)` — Clone из Assets → слот
-- [ ] Remote: купить улучшение; сервер списывает монеты, clone, сохраняет id
-- [ ] UI книги: страницы, картинка, цена, «Купить» / «Куплено»
-- [ ] `[E]` на книге → клиент открывает UI
+- [x] DataStore: `baseUpgrades` (общие ключи для двора и интерьера)
+- [x] Каталоги: `BaseBuildDefs`, `InteriorDefs` (+ цены в Config / defs)
+- [x] Join sync: `BaseBuildService.syncForPlayer`, `InteriorService.syncForPlayer`
+- [x] Remotes: `BuyUpgrade` (покупка/продажа построек), `BuyInteriorUpgrade`
+- [x] UI магазина: wall2 / jeep; UI книги: список сегментов
+- [x] `BookPrompt` → `InteriorController`; `HomePrompt` / `ExitPrompt` → телепорт
 
-### 12c — Проверка
+### 12c — Проверка ← **следующий шаг**
 
-- [ ] Play Solo: монеты хватает → забор появился → в книге галочка
-- [ ] Не хватает монет → toast, база не меняется
+- [ ] Play Solo: купить wall2 / jeep → модель на слоте
+- [ ] Книга: купить сегмент → виден в интерьере; prerequisite блокирует
 - [ ] Stop → Play: улучшения на месте (DataStore)
-- [ ] Чужая база: книга не даёт покупать чужие улучшения
+- [ ] Чужой `HomePrompt` → toast, без телепорта
+- [ ] ClientInit включает `InteriorController`; сервер грузит `SubjugationService`
 
 **Пока не делаем:** свободная расстановка ловушек (Phase 13), полный каталог из GAME.md.
 
@@ -55,17 +67,19 @@
 
 ### ⚠️ Что код пересоздаёт при каждом Play
 
+При **`STUDIO_MAP_MODE = true`** (сейчас в Config) procedural-плиты `Bases` **не** трогаются. Lab/Jail создаются только если код находит позиции баз.
+
 | Папка / объект | Кто создаёт | Можно ли вешать визуал сюда? |
 | -------------- | ----------- | ---------------------------- |
-| `Workspace.Bases` (плиты 14×1×14) | `BaseMapService` | **Нет** — сотрётся |
-| `Workspace.Labs` (капсула + `[E]`) | `LabService` | **Нет** — сотрётся |
-| `Workspace.Shops` | `ShopMapService` | **Нет** |
-| `Workspace.Jails` | `JailMapService` | **Нет** |
-| `Workspace.NpcHomes/House` | `NpcService` | **Нет** |
+| `Workspace.Bases` | place (при map mode) / иначе `BaseMapService` | **Да** в map mode; иначе сотрётся |
+| `Workspace.Labs` (капсула + `[E]`) | `LabService` (если есть base pos) | осторожно |
+| `Workspace.Shops` | `ShopMapService` | осторожно |
+| `Workspace.Jails` | `JailMapService` (если есть base pos) | осторожно |
+| `Workspace.NpcHomes/House` | `NpcService` | **Нет** — сотрётся |
 | `Workspace.Map` (своя папка) | **ты** | **Да** |
 | `ReplicatedStorage.Assets` | **ты** | **Да** |
 
-Декор и здания клади в **`Workspace.Map`**, выровняй по координатам из `Config.BASE_LAYOUT`. Placeholder'ы лабы/магазина/тюрьмы при Play появятся рядом — потом (отдельная код-фаза) отключим автогенерацию и повесим `[E]` на твои модели.
+Декор и здания клади в **`Workspace.Map`**. Ожидания Phase 12 (слоты, Interiors, prompts) — `HANDOFF.md`.
 
 ### Точки привязки (6 баз, `Config.BASE_LAYOUT`)
 

@@ -15,7 +15,7 @@ Roblox-игра: агентство монстров — пакости, защ�
 
 ## Статус
 
-**Phase 1 ✅** → **Phase 2** (Slime). Подробности: `docs/HANDOFF.md`.
+**Phases 0–10 ✅** · **Phase 12 код в репо** — проверка Studio. Подробности: `docs/HANDOFF.md`.
 
 ## AI
 
@@ -29,7 +29,7 @@ Roblox-игра: агентство монстров — пакости, защ�
 Конфиг: `CLAUDE.md`, `.cursor/rules/`, `.claude/`
 
 ```bash
-cd ~/Desktop/project && claude
+cd ~/Desktop/Roblox-game && claude
 ```
 
 ## Studio + Rojo (автосинк кода)
@@ -39,12 +39,8 @@ cd ~/Desktop/project && claude
 Полная инструкция: [docs/STUDIO.md](docs/STUDIO.md)
 
 ```bash
-cd ~/Desktop/project
+cd ~/Desktop/Roblox-game
 aftman install   # один раз
 rojo serve       # каждый сеанс
 # Studio → Plugins → Rojo → Connect
 ```
-
-## Статус
-
-**Phase 1 ✅** → Phase 2. См. `docs/HANDOFF.md`.

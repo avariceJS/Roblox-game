@@ -7,6 +7,7 @@ local _pds = nil
 local _ev  = nil
 
 local returnCFrames: { [number]: CFrame } = {}
+local activeInteriorId: { [number]: string } = {}
 
 local InteriorService = {}
 
@@ -54,6 +55,17 @@ local function findNamedPart(root: Instance, name: string): BasePart?
 	return nil
 end
 
+local function setFaceHidden(face: Decal | Texture, hidden: boolean)
+	if hidden then
+		if face:GetAttribute("OrigTransparency") == nil then
+			face:SetAttribute("OrigTransparency", face.Transparency)
+		end
+		face.Transparency = 1
+	else
+		face.Transparency = face:GetAttribute("OrigTransparency") or 0
+	end
+end
+
 local function setPartHidden(part: BasePart, hidden: boolean)
 	if hidden then
 		if part:GetAttribute("OrigTransparency") == nil then
@@ -70,9 +82,27 @@ local function setPartHidden(part: BasePart, hidden: boolean)
 		part.CanCollide = part:GetAttribute("OrigCanCollide") ~= false
 		part.CanQuery = true
 	end
+
+	for _, child in part:GetChildren() do
+		if child:IsA("Decal") or child:IsA("Texture") then
+			setFaceHidden(child, hidden)
+		elseif child:IsA("Light") then
+			if hidden then
+				if child:GetAttribute("OrigEnabled") == nil then
+					child:SetAttribute("OrigEnabled", child.Enabled)
+				end
+				child.Enabled = false
+			else
+				child.Enabled = child:GetAttribute("OrigEnabled") ~= false
+			end
+		end
+	end
 end
 
 local function setSegmentVisible(segment: Instance, visible: boolean)
+	if segment:IsA("BasePart") then
+		setPartHidden(segment, not visible)
+	end
 	for _, desc in segment:GetDescendants() do
 		if desc:IsA("BasePart") then
 			setPartHidden(desc, not visible)
@@ -80,10 +110,16 @@ local function setSegmentVisible(segment: Instance, visible: boolean)
 	end
 end
 
-local function removeBlocker(interior: Instance, blockerName: string)
+local function setBlockerHidden(interior: Instance, blockerName: string, hidden: boolean)
 	local part = findNamedPart(interior, blockerName)
-	if part then
-		part:Destroy()
+	if not part then
+		return
+	end
+	setPartHidden(part, hidden)
+	for _, desc in part:GetDescendants() do
+		if desc:IsA("BasePart") then
+			setPartHidden(desc, hidden)
+		end
 	end
 end
 
@@ -93,22 +129,52 @@ local function getSegmentsFolder(interior: Instance): Folder?
 	return nil
 end
 
+local function getDef(key: string)
+	for _, d in InteriorDefs do
+		if d.key == key then
+			return d
+		end
+	end
+	return nil
+end
+
+local function resolveInteriorId(player: Player, data: any): string?
+	local active = activeInteriorId[player.UserId]
+	if active then
+		return active
+	end
+	local baseId = tonumber(data.baseId)
+	if not baseId then
+		return nil
+	end
+	return "Base" .. baseId
+end
+
 local function hideAllSegments(interior: Instance)
 	local segments = getSegmentsFolder(interior)
 	if not segments then return end
 	for _, child in segments:GetChildren() do
 		setSegmentVisible(child, false)
 	end
+
+	local blockersFolder = interior:FindFirstChild("Blockers")
+	for _, def in InteriorDefs do
+		for _, blockerName in def.blockers do
+			local part = findNamedPart(interior, blockerName)
+			if part then
+				if blockersFolder and part:IsDescendantOf(blockersFolder) then
+					setBlockerHidden(interior, blockerName, false)
+				end
+			end
+		end
+	end
 end
 
-local function applySegment(baseId: number, key: string): (boolean, string?)
-	local def = nil
-	for _, d in InteriorDefs do
-		if d.key == key then def = d; break end
-	end
+local function applySegment(interiorId: string, key: string): (boolean, string?)
+	local def = getDef(key)
 	if not def then return false, "Неизвестный сегмент" end
 
-	local interior = getInterior("Base" .. baseId)
+	local interior = getInterior(interiorId)
 	if not interior then return false, "Интерьер не найден" end
 
 	local segments = getSegmentsFolder(interior)
@@ -118,7 +184,7 @@ local function applySegment(baseId: number, key: string): (boolean, string?)
 	if not segment then return false, "Нет сегмента " .. def.segment end
 
 	for _, blockerName in def.blockers do
-		removeBlocker(interior, blockerName)
+		setBlockerHidden(interior, blockerName, true)
 	end
 
 	setSegmentVisible(segment, true)
@@ -133,30 +199,49 @@ local function applySegment(baseId: number, key: string): (boolean, string?)
 	return true, nil
 end
 
-function InteriorService.syncForPlayer(player: Player, data: any)
-	local baseId = tonumber(data.baseId)
-	if not baseId then return end
+local function revertSegment(interiorId: string, key: string): (boolean, string?)
+	local def = getDef(key)
+	if not def then return false, "Неизвестный сегмент" end
 
-	local interior = getInterior("Base" .. baseId)
+	local interior = getInterior(interiorId)
+	if not interior then return false, "Интерьер не найден" end
+
+	local segments = getSegmentsFolder(interior)
+	if not segments then return false, "Нет папки Segments" end
+
+	local segment = segments:FindFirstChild(def.segment)
+	if not segment then return false, "Нет сегмента " .. def.segment end
+
+	setSegmentVisible(segment, false)
+
+	for _, blockerName in def.blockers do
+		setBlockerHidden(interior, blockerName, false)
+	end
+
+	return true, nil
+end
+
+function InteriorService.syncForPlayer(player: Player, data: any, interiorId: string?)
+	local id = interiorId or resolveInteriorId(player, data)
+	if not id then return end
+
+	local interior = getInterior(id)
 	if interior then
 		hideAllSegments(interior)
 	end
 
 	for _, def in InteriorDefs do
 		if (data.baseUpgrades or {})[def.key] then
-			local ok, err = applySegment(baseId, def.key)
+			local ok, err = applySegment(id, def.key)
 			if not ok then
-				warn("[InteriorService] sync", player.Name, def.key, err)
+				warn("[InteriorService] sync", player.Name, id, def.key, err)
 			end
 		end
 	end
 end
 
 function InteriorService.buyUpgrade(player: Player, data: any, key: string, evMonsterUpdated: RemoteEvent): { ok: boolean, message: string? }
-	local def = nil
-	for _, d in InteriorDefs do
-		if d.key == key then def = d; break end
-	end
+	local def = getDef(key)
 	if not def then return { ok = false, message = "Сегмент не найден" } end
 
 	if (data.baseUpgrades or {})[key] then
@@ -164,10 +249,7 @@ function InteriorService.buyUpgrade(player: Player, data: any, key: string, evMo
 	end
 
 	if def.requires and not (data.baseUpgrades or {})[def.requires] then
-		local reqDef = nil
-		for _, d in InteriorDefs do
-			if d.key == def.requires then reqDef = d; break end
-		end
+		local reqDef = getDef(def.requires)
 		return { ok = false, message = "Сначала нужно: " .. ((reqDef and reqDef.displayName) or def.requires) }
 	end
 
@@ -175,14 +257,14 @@ function InteriorService.buyUpgrade(player: Player, data: any, key: string, evMo
 		return { ok = false, message = "Недостаточно монет (нужно " .. def.price .. ")" }
 	end
 
-	local baseId = tonumber(data.baseId)
-	if not baseId then return { ok = false, message = "База не назначена" } end
+	local interiorId = resolveInteriorId(player, data)
+	if not interiorId then return { ok = false, message = "База не назначена" } end
 
 	data.coins = data.coins - def.price
 	data.baseUpgrades = data.baseUpgrades or {}
 	data.baseUpgrades[key] = true
 
-	local ok, err = applySegment(baseId, key)
+	local ok, err = applySegment(interiorId, key)
 	if not ok then
 		data.baseUpgrades[key] = nil
 		data.coins = data.coins + def.price
@@ -195,6 +277,41 @@ function InteriorService.buyUpgrade(player: Player, data: any, key: string, evMo
 		coins    = data.coins,
 		upgrades = data.baseUpgrades,
 		toast    = "Куплено: " .. def.displayName .. "! " .. def.emoji,
+	})
+	return { ok = true }
+end
+
+function InteriorService.sellUpgrade(player: Player, data: any, key: string, evMonsterUpdated: RemoteEvent): { ok: boolean, message: string? }
+	local def = getDef(key)
+	if not def then return { ok = false, message = "Сегмент не найден" } end
+
+	if not (data.baseUpgrades or {})[key] then
+		return { ok = false, message = "Не куплено" }
+	end
+
+	for _, other in InteriorDefs do
+		if other.requires == key and (data.baseUpgrades or {})[other.key] then
+			return { ok = false, message = "Сначала продай: " .. other.displayName }
+		end
+	end
+
+	local interiorId = resolveInteriorId(player, data)
+	if not interiorId then return { ok = false, message = "База не назначена" } end
+
+	local ok, err = revertSegment(interiorId, key)
+	if not ok then
+		return { ok = false, message = err or "Не удалось убрать" }
+	end
+
+	data.baseUpgrades[key] = nil
+	data.coins = data.coins + def.price
+
+	local PlayerDataService = require(script.Parent.PlayerDataService)
+	PlayerDataService.save(player)
+	evMonsterUpdated:FireClient(player, {
+		coins    = data.coins,
+		upgrades = data.baseUpgrades,
+		toast    = "Продано: " .. def.displayName .. " (+" .. def.price .. ")",
 	})
 	return { ok = true }
 end
@@ -239,7 +356,8 @@ function InteriorService.init(playerDataService, evMonsterUpdated)
 				return
 			end
 
-			InteriorService.syncForPlayer(player, data)
+			activeInteriorId[player.UserId] = interiorId
+			InteriorService.syncForPlayer(player, data, interiorId)
 
 			local doorPart = prompt.Parent :: BasePart
 			returnCFrames[player.UserId] = doorPart.CFrame
@@ -255,12 +373,14 @@ function InteriorService.init(playerDataService, evMonsterUpdated)
 				return
 			end
 			returnCFrames[player.UserId] = nil
+			activeInteriorId[player.UserId] = nil
 			teleport(player, cf)
 		end
 	end)
 
 	Players.PlayerRemoving:Connect(function(player: Player)
 		returnCFrames[player.UserId] = nil
+		activeInteriorId[player.UserId] = nil
 	end)
 end
 

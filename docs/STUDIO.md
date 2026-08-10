@@ -22,7 +22,7 @@
 
 ```bash
 brew install aftman
-cd ~/Desktop/project
+cd ~/Desktop/Roblox-game
 aftman install
 ```
 
@@ -38,7 +38,7 @@ source "$HOME/.aftman/env"
 
 ```bash
 rojo --version   # Rojo 7.4.4
-cd ~/Desktop/project
+cd ~/Desktop/Roblox-game
 rojo serve
 ```
 
@@ -68,6 +68,8 @@ rojo serve
 
 ### 4. Базы на карте (BaseId)
 
+Сейчас в коде **`Config.STUDIO_MAP_MODE = true`**: procedural-плиты **не** создаются. Базы должны уже лежать в place.
+
 В Explorer: `Workspace → Bases → Base1…Base6`
 
 На **каждой** базе (`Base1`…`Base6`):
@@ -78,6 +80,17 @@ rojo serve
 | **Neutral** | **выключен** (код тоже выключает при старте) |
 
 База может быть **сам SpawnLocation** или папка со SpawnLocation внутри — оба варианта ок.
+
+### 5. Карта Phase 12 (особняк / книга / слоты)
+
+Полный чеклист — **`HANDOFF.md`**. Кратко:
+
+- `Map` — особняк (`Build/MansionEdit` или `Mansions/Mansion_N` или `Home`) + `UpgradeSlots`
+- `Assets.BaseUpgrades` — шаблоны `Wall2`, `Jeep`
+- `Map.Interiors` — `Interior_BaseN` с `Segments`, blockers, `Spawn`
+- Prompts: `HomePrompt`, `ExitPrompt`, `BookPrompt`, `ShopPrompt`, …
+
+При `STUDIO_MAP_MODE` Lab/Jail placeholders создаются только если код находит позиции баз; иначе silently skip.
 
 ---
 
@@ -109,7 +122,7 @@ Rojo покажет **View changes / Sync** → нажми **Accept**. Пере�
 **Терминал 1** (оставить открытым):
 
 ```bash
-cd ~/Desktop/project
+cd ~/Desktop/Roblox-game
 rojo serve
 ```
 
@@ -122,6 +135,22 @@ rojo serve
 Claude Code / Cursor пишут в `src/` → ты видишь в Studio без перетаскивания.
 
 **Сохраняй place** в Studio после изменений карты (File → Save to Roblox / Publish).
+
+---
+
+## Карта + AI (snapshot / Command Bar)
+
+Карта и интерьеры **не в git** — только place. Чтобы AI видел структуру:
+
+1. Терминал: `python3 tools/studio-snapshot/receive.py`
+2. Studio (Edit): Plugins → **Map Snapshot** → Snapshot Map  
+   → пишет `docs/snapshots/latest.json`
+3. Плагин один раз: скопировать `tools/studio-snapshot/ExportMapSnapshot.plugin.lua` в `~/Documents/Roblox/Plugins/`
+
+Пересборка интерьеров / HomeDoor: файлы `tools/*.command.lua` → вставить в **Command Bar** → Run (Edit mode).  
+Подробности и таблица Interior_Base1..3 — **`HANDOFF.md`**.
+
+Allow HTTP Requests нужен и для snapshot (localhost:8765), и для Rojo.
 
 ---
 

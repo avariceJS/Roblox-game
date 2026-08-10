@@ -1,3 +1,5 @@
+local Config = require(script.Parent.Config)
+
 local BaseUtil = {}
 
 function BaseUtil.normalizeId(baseId: any): number?
@@ -53,6 +55,11 @@ function BaseUtil.getJailFloorPos(baseId: number): Vector3?
 	local spawn = BaseUtil.getSpawn(baseId)
 	if not spawn then return nil end
 	local topY = spawn.Position.Y + spawn.Size.Y * 0.5
+	if Config.STUDIO_MAP_MODE then
+		local side = spawn.CFrame.RightVector * (spawn.Size.X * 0.5 + 14)
+		local back = spawn.CFrame.LookVector * -4
+		return Vector3.new(spawn.Position.X, topY, spawn.Position.Z) + side + back
+	end
 	local front = spawn.CFrame.LookVector * (spawn.Size.Z * 0.5 + 3.5)
 	return Vector3.new(spawn.Position.X, topY, spawn.Position.Z) + front
 end

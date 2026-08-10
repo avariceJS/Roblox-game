@@ -244,7 +244,7 @@ fnBuyUpgrade.OnServerInvoke = function(player: Player, payload: { upgradeKey: st
 	return { ok = true }
 end
 
-fnBuyInteriorUpgrade.OnServerInvoke = function(player: Player, payload: { key: string? })
+fnBuyInteriorUpgrade.OnServerInvoke = function(player: Player, payload: { key: string?, sell: boolean? })
 	local data = PlayerDataService.get(player)
 	if not data then
 		return { ok = false, message = "Данные не загружены" }
@@ -252,6 +252,9 @@ fnBuyInteriorUpgrade.OnServerInvoke = function(player: Player, payload: { key: s
 	local key = payload and payload.key
 	if not key then
 		return { ok = false, message = "Неверный сегмент" }
+	end
+	if payload.sell == true then
+		return InteriorService.sellUpgrade(player, data, key, evMonsterUpdated)
 	end
 	return InteriorService.buyUpgrade(player, data, key, evMonsterUpdated)
 end

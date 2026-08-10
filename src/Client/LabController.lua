@@ -875,17 +875,53 @@ local function openLab(labBaseId: any)
 	setOpen(true)
 end
 
+local function resolveBaseIdFromPrompt(prompt: ProximityPrompt): number?
+	local host = prompt.Parent
+	if host and host:IsA("Instance") then
+		local onHost = BaseUtil.normalizeId(host:GetAttribute("BaseId"))
+		if onHost then
+			return onHost
+		end
+	end
+	local model = prompt:FindFirstAncestorWhichIsA("Model")
+	if model then
+		local onModel = BaseUtil.normalizeId(model:GetAttribute("BaseId"))
+		if onModel then
+			return onModel
+		end
+	end
+	local folders = { workspace:FindFirstChild("Labs"), workspace:FindFirstChild("Jails") }
+	for _, folder in ipairs(folders) do
+		if folder then
+			for _, child in ipairs(folder:GetChildren()) do
+				if child:IsA("Model") then
+					for _, valName in ipairs({ "LabHost", "JailCage", "LabDoor" }) do
+						local doorVal = child:FindFirstChild(valName)
+						if doorVal and doorVal:IsA("ObjectValue") and doorVal.Value == host then
+							return BaseUtil.normalizeId(child:GetAttribute("BaseId"))
+						end
+					end
+					local onChild = BaseUtil.normalizeId(child:GetAttribute("BaseId"))
+					if onChild and host and host:IsDescendantOf(child) then
+						return onChild
+					end
+				end
+			end
+		end
+	end
+	return nil
+end
+
 ProximityPromptService.PromptTriggered:Connect(function(prompt: ProximityPrompt, player: Player)
 	if player ~= localPlayer then return end
-	local model = prompt:FindFirstAncestorWhichIsA("Model")
-	if not model then return end
+
 	if prompt.Name == "LabPrompt" then
-		openLab(model:GetAttribute("BaseId"))
+		openLab(resolveBaseIdFromPrompt(prompt))
 	elseif prompt.Name == "JailPrompt" then
-		local targetBaseId = BaseUtil.normalizeId(model:GetAttribute("BaseId"))
+		local targetBaseId = resolveBaseIdFromPrompt(prompt)
 		local result = fnAttemptJailBreak:InvokeServer({ targetBaseId = targetBaseId })
 		if result and result.ok then
-			showToast("Монстр освобождён! 🔓")
+			showToast("Монстр освобождён!")
 		else
 			showToast((result and result.message) or "Ошибка влома")
 		end

@@ -8,244 +8,115 @@
 
 |                   |                                                              |
 | ----------------- | ------------------------------------------------------------ |
-| **Фаза**          | **Phase 12** — книга улучшений базы (см. `ROADMAP.md`)       |
-| **Геймплей**      | Phases 0–10 ✅                                               |
-| **Следующий шаг** | Studio: шаблоны в `Assets.BaseUpgrades` + слоты на Mansion_3 |
-| **Визуал карты**  | Map V2 особняк — параллельно, не блокирует книгу             |
+| **Фаза**          | **Phase 12** код ✅ · **визуал / карта** в Studio             |
+| **Геймплей**      | Phases 0–10 ✅ · интерьеры Lv1–3 собраны и работают           |
+| **Следующий шаг** | Строить **открытую карту** (дворы, 6 баз, декор, экстерьеры) |
+| **Визуал карты**  | `STUDIO_MAP_MODE=true` — place, не procedural Bases          |
 | **Блокеры**       | нет                                                          |
-| **Workflow**      | Cursor — консультация; код Phase 12b — Claude Code           |
+| **Workflow**      | Snapshot → советы; Command Bar-скрипты из `tools/`           |
 
-### Решение (2026-06-29) — прокачка базы
+### Интерьеры (готово, проверено)
 
-- **Не** зелёные тайкон-плитки.
-- **Книга** в особняке: картинки улучшений, цена, «Купить» → сервер списывает → на базе появляется часть здания (фиксированный слот).
-- **Магазин** (слева) — позже: ловушки, камеры; игрок **сам ставит** на дворе (Phase 13).
-- **Вариант B (прод):** шаблоны в `Assets`, на базе только слоты; код `Clone` по DataStore — без скрытых копий ×6.
-- Лаборатория = монстры; книга = только улучшения здания.
+Три «коробки» в облаках + книга прокачки (купить/продать). Книга показывает **только сегменты своего** `Interior_BaseN`.
 
-Полный текст: `GAME.md` → «Прокачка» + «вариант B».
+| ID | Размер Shell | ORIGIN (примерно) | Сегментов | Экстерьер |
+| -- | ------------ | ----------------- | --------- | --------- |
+| **Base1** | 28×18, H11 | `(50, 520, 0)` | 5 | `Map.Build.MansionEdit` + `HomeDoor` |
+| **Base2** | 40×26, H12 | `(50, 520, 100)` | 7 | `Mansions.Mansion_2` + `GothicHouse_Lv2` |
+| **Base3** | 56×36, H13 | `(50, 520, 220)` | 9 | `Mansions.Mansion_3` + `GothicHouse_Lv3` (клон Lv2, **заменить**) |
 
-### Шаг 1 — Studio (вариант B)
+**Каталог** (`InteriorDefs.lua`): общие ключи; у большего дома больше сегментов в place.
 
-1. `ReplicatedStorage` → `Assets` → папка **`BaseUpgrades`** → три Model: `Fence`, `Floor2`, `RestRoom`.
-2. На `Map/Mansions/Mansion_3` → папка **`UpgradeSlots`** → Part-якоря `Slot_Fence`, `Slot_Floor2`, `Slot_RestRoom` (маленькие, `Transparency=1`, `CanCollide=false`).
-3. **Один раз:** Clone `Fence` → поставь на `Slot_Fence` → подгони шаблон в Assets → **удали клон** с карты.
-4. Книга в особняке (Toolbox).
-5. Save to Roblox → скрин Explorer + вид сверху.
+- Всегда: `room1_extra`, `stairs`, `floor2`→needs stairs, `floor2_room1`, `basement_lab` (+`HatchRim`)
+- Base2+: `room2_extra`, `floor2_room2`
+- Base3+: `room3_extra`, `floor2_room3`
+
+**Механика:** Shell цельный; покупка **скрывает** blocker (`WallCut_*` / `CeilingPlug_Stairs` / `FloorCut_*`), продажа возвращает. Blockers внутри `floor2` не светятся до покупки 2 этажа.
+
+**Критично:** покупки применяются к **активному** `InteriorId` (куда вошёл через `HomePrompt`), не только к `data.baseId`. Иначе улучшения «уезжали» в Base1.
+
+Текстуры: стены `rbxassetid://139986462838305`, пол `rbxassetid://110666654316364` — **Decal** (не Texture с тайлингом).
+
+### Studio place (ожидания)
+
+| Объект | Зачем |
+| ------ | ----- |
+| `Workspace.Bases.BaseN` + `BaseId` | спавн (пока часто только Base1) |
+| `Map.Interiors.Interior_Base1..3` + `InteriorId` | Shell / Blockers / Segments / Spawn |
+| `Map.Mansions.Mansion_2/3` | экстерьер + `Home/HomeDoor` (`BaseId`, `InteriorId`) |
+| `Map.Build.MansionEdit` | Base1 двор/слоты |
+| `HomePrompt` / `ExitPrompt` / `BookPrompt` | вход / выход / книга |
+| `Assets.BaseUpgrades` | Wall2, Jeep |
+
+Если на карте одна база: `link-mansion*-home` ставит на дверь твой единственный `BaseId`, но `InteriorId=Base2/3` — вход в нужный интерьер.
+
+### Инструменты карты (`tools/`)
+
+| Файл | Назначение |
+| ---- | ---------- |
+| `studio-snapshot/` | плагин + `receive.py` → `docs/snapshots/latest.json` |
+| `build-interior-base1/2/3.command.lua` | пересобрать интерьер (Command Bar → Run) |
+| `link-mansion2-home.command.lua` | Meshy/Gothic → Lv2 + HomeDoor |
+| `link-mansion3-home.command.lua` | клон Lv2 → Lv3 + HomeDoor |
+| `place-six-lv1-mansions.command.lua` | только 6× Lv1 на улице; Lv2/Lv3 → `ServerStorage.HouseTemplates` |
+
+Snapshot: `python3 tools/studio-snapshot/receive.py` + Plugins → **Snapshot Map**. Плагин также снимает Models в корне Workspace.
 
 ### Как продолжить (чат)
 
 ```
-Продолжаем Rent-a-Monster — книга улучшений базы. Прочитай HANDOFF, ROADMAP Phase 12, GAME.md (книга).
-Консультируй по Studio; код — когда заглушки на Base3 готовы.
+Продолжаем Rent-a-Monster. Прочитай docs/HANDOFF.md.
+Строим открытую карту (дворы Base1–6, экстерьеры, декор).
+Интерьеры Lv1–3 уже работают — не ломать Interior_Base* без нужды.
+Snapshot → docs/snapshots/latest.json; Command Bar-скрипты из tools/ ок.
 ```
 
 ---
 
-## Что работает (Play Solo / 2 Players, 2026-06-28)
+## Что работает (логика)
 
-- **6 баз** — сервер создаёт `Workspace.Bases` из `Config.BASE_LAYOUT` (`BaseMapService`)
-- **NPC-дом** — `Workspace.NpcHomes/House`, коричневый Part, позиция из `Config.NPC_HOME_POSITION`
-- **HUD** — 🪙 монеты + 🌀 chaos + 🏠 #N (`HudController`)
-- **Подсветка своей базы** — зелёный диск + Highlight + «▼ ВАШ ОСОБНЯК #N» (`BaseMarkerController`)
-- **Лаборатория** — [E] у капсулы на **своей** базе → UI с монстрами + клетка + выкуп + подчинение; чужая база → toast (`LabController`)
-- **Стартовый монстр** — Slime/Гуппи при первом join (`MonsterService`)
-- **Отправка монстра** — пикер целей → walker (`HairboundWraith` из `Assets`, иначе fallback шар) → walk-анимация на клиенте + tween pivot → лужа → монеты+chaos+XP → Fatigued → Idle; level up toast через 1.5 сек
-- **XP и уровни** — `DISPATCH_XP=10`, `XP_PER_LEVEL=30`; уровень отображается в карточке монстра «Обычный | Ур.N»
-- **4 монстра** — Slime 🐸 / Gremlin 👺 / ShadowRat 🐀 / Homunculus 🧿 в MonsterDefs + ShopController
-- **Защитник** — toast при атаке; ловушка Cage в лаборатории
-- **Клетка** — при Cage + атаке: монстр → Captured, запись в `data.jail` с `subjugateAttempts=0`
-- **Выкуп** — задаёт цену (25/50/100/200); владелец → платит → монстр Idle
-- **Подчинение** — кнопка «Подчинить» в панели клетки; 50% шанс, 3 попытки; успех → монстр у захватчика; провал × 3 → авто-компенсация 30💰
-- **Магазин** — `Workspace.Shops/Shop_BaseN`; покупка 4 монстров + квест +25💰 + «Усиленная ловушка» 150💰
-- **Влом** — `Workspace.Jails/Jail_BaseN`; если Cage → alert; если `reinforcedTrap` → 40% поймать Idle монстр вломщика; иначе монстр Idle
-- **Base Upgrade** — `baseUpgrades.reinforcedTrap` в DataStore; куплено в ShopController; влияет в JailBreakService
-- **Studio-only:** `Config.STUDIO_WALK_SPEED = 64` — быстрая ходьба в Play Solo для тестов
+- Phases 0–10 + Phase 12 (двор + книга + интерьеры)  
+- `BuyInteriorUpgrade` + `sell: true`  
+- `STUDIO_WALK_SPEED = 64`
 
 ---
 
-## Архитектура (не ломать без причины)
-
-### Remotes (12)
-
-`GetPlayerData` (RF) · `BaseAssigned` (RE) · `MonsterUpdated` (RE) · `DispatchMonster` (RF) · `SetTrap` (RF) · `SetRansom` (RF) · `PayRansom` (RF) · `BuyMonster` (RF) · `DoQuest` (RF) · `AttemptJailBreak` (RF) · `AttemptSubjugate` (RF) · `BuyUpgrade` (RF)
-
-`MonsterUpdated` — универсальный: monsters, coins, chaos, jail, hasCage, nextQuestAt, upgrades, toast (любое сочетание).
-
-Лаборатория **без** отдельного server remote: клиент слушает `ProximityPromptService.PromptTriggered` → `GetPlayerData:InvokeServer()` → проверка `baseId`.
-
-### Bootstrap клиента (`ClientInit.client.lua`)
+## Архитектура (кратко)
 
 ```
-BaseMarkerController → LabController → ShopController → WalkerAnimController → HudController
+HomePrompt → InteriorService (activeInteriorId) → Spawn
+BookPrompt → InteriorController (фильтр по сегментам InteriorId)
+Buy/Sell → applySegment / revertSegment на activeInteriorId
 ```
 
-**BaseMarker первым** — иначе гонка с `BaseAssigned`. **WalkerAnimController** — анимация dispatch-walker на клиенте (custom rig).
-
-### Сервер при join
-
-`PlayerDataService.load` → `BaseService.assign` → стартовый Slime → `MissionService.syncPlayerMonsters` → `BaseAssigned` + `MonsterUpdated` (deferred FireClient).
-
-### Dispatch flow (Phase 4)
-
-1. Клиент: `fnDispatch:InvokeServer({ targetBaseId, monsterId })` — targetBaseId=0 для NPC-дома
-2. Сервер: `MissionService.dispatch(player, rawId, requestedId?)` — id=0 обрабатывается отдельно без normalizeId
-3. `getMissionPlatform(targetId)` → NpcHome Part (id=0) или SpawnLocation базы (id≥1)
-4. `task.spawn(runMission)` → `createWalker` (клон `Assets.Monsters.HairboundWraith` + атрибуты Target/TravelTime) → клиент `WalkerAnimController` → лужа → coins+chaos → toasts → Fatigued → scheduleFatigueRecovery
-
-### Пикер целей (LabController)
-
-- `lastTargets` заполняется из `data.targets` при открытии лаборатории
-- `pickerBtns[slotIdx]` + `pickerBtnIds[slotIdx]` — динамические кнопки (MAX_PICKER_BTNS=7)
-- NPC-дом: коричневый фон `Color3.fromRGB(80, 45, 20)`; игрок: тёмно-синий
-
-### Файлы
-
-```
-Server/   Main, BaseMapService, BaseService, NpcService, PlayerDataService, MonsterService, LabService, MissionService, TrapService, RansomService, ShopService, ShopMapService, JailMapService, JailBreakService, SubjugationService
-Shared/   Config, BaseUtil, MonsterDefs, MonsterDisplay
-Client/   BaseMarkerController, LabController, ShopController, WalkerAnimController, HudController, UiUtil
-bootstrap/ ServerInit, ClientInit
-```
+`baseUpgrades` в DataStore — общие ключи (двор + интерьер).  
+**Без комментариев в `.lua`.**
 
 ---
 
-## ⚠️ Критично для Cursor (уже ломали)
-
-1. **`ClientInit` — цепочка `require`:** ошибка в **первом** модуле → нет подсветки **и** нет лаборатории **и** нет HUD. Смотреть Output.
-2. **Типичные причины падения:** удалили `Players`, оставили `Players.LocalPlayer`; неверный `require` пути; опечатка при «чистке».
-3. **Не трогать без теста:** порядок bootstrap, remotes, `BaseMarkerController` как первый require.
-4. **После правок кода:** Accept в Rojo → Stop → Play Solo (не Play поверх старой сессии).
-5. **`syncPlayerMonsters`** при join: `OnMission→Idle`, `Fatigued expired→Idle`, `Fatigued active→scheduleFatigueRecovery`. Таймер не переживает Stop→Play, `fatigueUntil` в DataStore — источник правды.
-6. **`LabService.init()`** — без аргументов, Config импортирован внутри модуля.
-7. **`MissionService.dispatch(player, rawId, requestedId?)`** — rawId передаётся as-is из Main (не normalizeId); 0 = NPC-дом.
-8. **`MissionService.init(pds, ev, baseService)`** — третий аргумент BaseService обязателен для defender toast.
-9. **`evMonsterUpdated`** — LabController обрабатывает `payload.hasCage`, `payload.jail`, `payload.monsters`, `payload.nextQuestAt` независимо. HudController показывает toast если есть `payload.toast`.
-10. **`RansomService.payRansom`** вызывает `PlayerDataService.modifyByUserId` напрямую (require внутри модуля) — захватчик может быть оффлайн.
-11. **Лаборатория Phase 6**: `jailSlots[i]` (кнопки) → `ransomPanel` overlay (ZIndex=8); `dispatchBtn` для Captured с ransomPrice становится активным (PayRansom).
-12. **`questCooldownUntil`** в DataStore — таймер квеста переживает Stop→Play; клиент синхронизируется через `GetPlayerData.nextQuestAt`.
-13. **Выкуп старых пленников:** если нет `capturedByUserId` — `RansomService` ищет захватчика через `jail` + `BaseService.getOccupant`; при SetRansom backfill `capturedByUserId`.
-14. **Лаборатория ≠ магазин:** лаба = монстры, отправка, ловушка, клетка, выкуп, подчинение. Магазин, квесты, апгрейды — ShopController.
-15. **`SubjugationService.attemptSubjugate(capturer, monsterId)`** — ищет запись в `capturer.jail`; 50% шанс; провал × 3 → авто-компенсация 30💰 + удаление монстра у обоих.
-16. **`baseUpgrades`** в DataStore; `reinforcedTrap=true` → 40% ловушка в JailBreakService; отображается в ShopController как «куплено».
-17. **`monster.xp/level`** — `MissionService.runMission` начисляет XP; level up toast через 1.5 сек; `MonsterDisplay.fill` показывает «Обычный | Ур.N».
-18. **Dispatch walker-визуал** — модель только в Studio: `ReplicatedStorage.Assets.Monsters.HairboundWraith` (не в git). Внутри: `AnimationController` → `Animator`, `Animation` `Walk` с валидным `AnimationId`. Анимация **должна** быть с того же Mixamo-экспорта, что и rig (With Skin). Иначе `Play()` без движения костей.
-19. **`WalkerAnimController`** — слушает `Workspace.Missions` ChildAdded; ищет `Walk` в модели (fallback `Config.WALKER_WRAITH_ANIM_ID`). Сервер не твинит кости — только атрибуты цели.
-
-### Pipeline монстра (Studio, не Rojo)
-
-Meshy → remesh ~10K → Mixamo auto-rig → анимация **FBX With Skin** (один файл) → Import → `Animation` + `AnimationId` внутрь модели → `Assets.Monsters`.
-
----
-
-## Последняя сессия (2026-06-28) — визуал dispatch walker
+## Последняя сессия (2026-08-09) — три интерьера + карта-тулинг
 
 ### Сделано
 
 | Тема | Итог |
 | ---- | ---- |
-| Тест-монстр | `HairboundWraith` (Meshy + Mixamo Walking With Skin) |
-| Dispatch | `MissionService.createWalker` клонирует модель из Assets; fallback — neon-шар |
-| Анимация | `WalkerAnimController` — walk на клиенте + tween `PivotTo` по атрибутам |
-| Баг rig | Руки не двигались: AnimationId от **другого** Mixamo-экспорта → исправлено парой model+anim из одного FBX |
-| Проверка | Command Bar + dispatch в Play Solo — работает |
+| Base1 hermetic Shell | blockers hide/show, sell в книге |
+| Base2 / Base3 | больше площадь и комнаты; скрипты build + link |
+| Баг покупок | apply шёл на `baseId` → чинили через `activeInteriorId` |
+| Snapshot | Map/Bases/Assets + Workspace models → `docs/snapshots/` |
+| Экстерьер Lv2 | Gothic Meshy; Lv3 = клон (заменить позже) |
 
-### Решения
+### Следующий фокус
 
-- `InitialPoses` / `KeyframeSequence` — не playable; нужен объект `Animation` с `AnimationId`.
-- Custom NPC rig → анимация на **клиенте**, не Humanoid на сервере.
-- Шаблон для следующих монстров: тот же pipeline + имя `Walk` внутри модели.
-
-### Нюансы
-
-- `Config.WALKER_WRAITH_ANIM_ID` — запасной fallback; рабочий id в Studio на объекте `Walk` (`80493925805577`). Можно синхронизировать Config при желании.
-- Сейчас **все** dispatch используют одну модель `HairboundWraith` (не по типу монстра) — ок для MVP-визуала.
-
----
-
-## Предыдущая сессия (2026-06-24) — Phase 6 Economy & Jail Ransom (Claude Code)
-
-### Создано
-
-| Файл                       | Что сделано                                                                              |
-| -------------------------- | ---------------------------------------------------------------------------------------- |
-| `Server/RansomService.lua` | `setRansom(defData, monsterId, price)`, `payRansom(payerData, monsterId)` — offline-safe |
-| `Server/ShopService.lua`   | `buyMonster(data, monsterType)` — списывает монеты, добавляет монстра в data.monsters    |
-
-### Изменено
-
-| Файл                           | Изменение                                                                                                                          |
-| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `Shared/Config.lua`            | RANSOM_MIN=10, RANSOM_MAX=500, SHOP_PRICES={Slime=50}, QUEST_REWARD=25, QUEST_COOLDOWN=120                                         |
-| `Server/PlayerDataService.lua` | `questCooldownUntil=0` в defaultData+load; `getByUserId`, `modifyByUserId` (online cache + offline DS)                             |
-| `Server/MissionService.lua`    | bug fix `def.name`→`def.displayName`; `capturedByUserId` + `ransomPrice=nil` в capture block                                       |
-| `Server/Main.lua`              | +RansomService, ShopService; 4 remotes (SetRansom, PayRansom, BuyMonster, DoQuest) + handlers; `nextQuestAt` в GetPlayerData       |
-| `Client/LabController.lua`     | Panel 600px; jailSlots×3 (TextButton); ransomPanel overlay; shopSection+buySlimeBtn; questBtn с countdown; PayRansom в dispatchBtn |
-
-### Риски регрессии
-
-- Phase 3–5 flow без изменений в логике — проверить dispatch к NPC-дому и PvP поимку.
-- `modifyByUserId` пишет в DS напрямую — не вызывать часто (rate limit DataStore).
-- `ransomPanel` ZIndex=8 перекрывает всё в panel — не должен быть виден при открытом picker.
-
----
-
-## Предыдущая сессия (2026-06-24) — Phase 5 Defense
-
-### Создано
-
-| Файл                     | Что сделано                                                      |
-| ------------------------ | ---------------------------------------------------------------- |
-| `Server/TrapService.lua` | setCage, hasCage; CAGE_COST=0 (бесплатно), TRAP_CATCH_CHANCE=1.0 |
-
-### Изменено
-
-| Файл                           | Изменение                                                                                                                                      |
-| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Shared/Config.lua`            | `CAGE_COST=0`, `TRAP_CATCH_CHANCE=1.0`                                                                                                         |
-| `Server/PlayerDataService.lua` | `defaultData()` + `load()` — `jail = {}`                                                                                                       |
-| `Server/MissionService.lua`    | `runMission`: capture block (hasCage → Captured + jail insert + FireClient обоим); defender toast перенесён в runMission                       |
-| `Server/Main.lua`              | TrapService, SetTrap remote+handler, GetPlayerData → jail+hasCage                                                                              |
-| `Client/LabController.lua`     | SetTrap remote, defenseSection (cageBtn+jailFrame), updateCageButton, renderJail, Captured case в renderDispatch, evMonsterUpdated рефакторинг |
-
-### Риски регрессии
-
-- Phase 3–4 flow без ловушки не изменён — проверить dispatch к NPC-дому.
-- `picker.Visible` + `defenseSection.Visible` связаны — проверить переход пикер→назад.
-
-## Последняя сессия (2026-06-22) — Phase 4 PvP Attack
-
-### Создано
-
-| Файл                    | Что сделано                                          |
-| ----------------------- | ---------------------------------------------------- |
-| `Server/NpcService.lua` | новый; создаёт `Workspace.NpcHomes/House` при старте |
-
-### Изменено
-
-| Файл                        | Изменение                                                                                                          |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `Shared/Config.lua`         | `NPC_HOME_ID=0`, `NPC_HOME_POSITION`                                                                               |
-| `Shared/BaseUtil.lua`       | `getNpcHome()`, `getMissionPlatform(targetId)`                                                                     |
-| `Server/BaseService.lua`    | `getOccupied()`, `getOccupant(baseId)`                                                                             |
-| `Server/MissionService.lua` | `_bs`, `init(+baseService)`, `runMission` → getMissionPlatform + defender toast, `dispatch` → id=0 ветка           |
-| `Server/Main.lua`           | Config+NpcService, NpcService.init(), BaseService в MissionService.init, rawId в dispatch, targets в GetPlayerData |
-| `Client/LabController.lua`  | pickerBtns+pickerBtnIds (динамический пикер), lastTargets, toast-only handler                                      |
-
-### Риски регрессии
-
-- `pickerBack.Position = UDim2.new(0, 8, 1, -52)` — при MAX_PICKER_BTNS=7 (4 ряда) кнопка «Назад» может перекрываться. Тест: открыть пикер с 7 целями.
-- `NpcService.init()` удаляет существующий `NpcHomes` и пересоздаёт — безопасно при Stop→Play.
-- Defender toast приходит через `MonsterUpdated` — HudController должен обрабатывать payload без `monsters` без краша. Проверить HudController.
+Открытая карта / дворы / 6 баз / финальные экстерьеры. Интерьеры не трогать без запроса.
 
 ---
 
 ## История сессий
 
-| Дата       | Итог                                                                                                                   |
-| ---------- | ---------------------------------------------------------------------------------------------------------------------- |
-| 2026-06-21 | Setup, Rojo, Phase 1                                                                                                   |
-| 2026-06-22 | Phase 2 ✅; Phase 3 ✅; рефактор; Phase 4 (PvP) ✅; Phase 5 (Defense) ✅                                               |
-| 2026-06-24 | Phase 6 ✅ (выкуп, магазин в лабе, квест); фикс ransom; UX: магазин → Phase 7                                          |
-| 2026-06-28 | Phase 7–10 ✅; HairboundWraith; фокус → Visual Map |
-| 2026-06-29 | Дизайн: книга + магазин с расстановкой; **прокачка вариант B** (Assets + Clone); Phase 12–13 |
+| Дата | Итог |
+| ---- | ---- |
+| 2026-06-21…28 | Phases 0–10, walker |
+| 2026-07–08 | Phase 12 код (двор, книга, STUDIO_MAP_MODE) |
+| 2026-08-05 | Синк доков / bootstrap / Subjugation path |
+| 2026-08-06…09 | Snapshot-тулинг; Interior Base1–3; sell; activeInteriorId; Gothic links |
